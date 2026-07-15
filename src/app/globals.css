@@ -1,0 +1,75 @@
+@import "tailwindcss";
+
+:root {
+  /* Brand color palette */
+  --brand-orange: #EA3B0C;
+  --brand-orange-hover: #C22E06;
+  --brand-orange-tint: #FFEDE5;
+  --surface-white: #FFFFFF;
+  --surface-page: #F7F5F2;
+  --text-primary: #292524;
+  --text-secondary: #78716C;
+  --border: #E7E4DF;
+
+  /* Semantic status colors (non-orange) */
+  --success: #10B981; /* Green for success/paid/won */
+  --warning: #F59E0B; /* Amber for pending/in-review */
+  --danger: #EF4444;  /* Red for overdue/lost/cancelled */
+  --info: #64748B;    /* Blue-gray for neutral/new states */
+
+  /* System theme mapped to Tailwind colors */
+  --background: var(--surface-page);
+  --foreground: var(--text-primary);
+  --card: var(--surface-white);
+  --card-foreground: var(--text-primary);
+  --border-color: var(--border);
+  --ring: var(--brand-orange);
+  --radius: 12px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface-page: #1C1917; /* Dark warm gray background */
+    --surface-white: #292524; /* Dark warm gray card background */
+    --text-primary: #F5F5F4; /* Light warm gray primary text */
+    --text-secondary: #A8A29E; /* Light warm gray secondary text */
+    --border: #44403C; /* Darker border */
+    --brand-orange-tint: #4C1A0E; /* Deep orange tint */
+  }
+}
+
+@theme {
+  --color-brand-orange: var(--brand-orange);
+  --color-brand-orange-hover: var(--brand-orange-hover);
+  --color-brand-orange-tint: var(--brand-orange-tint);
+  --color-surface-white: var(--surface-white);
+  --color-surface-page: var(--surface-page);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-border-custom: var(--border);
+
+  /* Semantic colors */
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-info: var(--info);
+
+  /* Native Tailwind color mapping overrides */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-border: var(--border-color);
+  --color-ring: var(--ring);
+
+  /* Radius mapping */
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
