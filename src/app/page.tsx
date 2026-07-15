@@ -1,103 +1,68 @@
-import Image from "next/image";
+import { auth, signOut } from "../auth";
+import { Button } from "../components/ui/button";
+import { Logo } from "../components/logo";
 
-export default function Home() {
+export default async function Home() {
+  const session = await auth();
+
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+    <div className="flex min-h-screen flex-col items-center justify-center p-6 bg-surface-page text-text-primary font-sans">
+      <div className="w-full max-w-[400px] bg-surface-white border border-border rounded-xl p-6 shadow-sm text-center">
+        {/* Orvyn Labs brand lockup */}
+        <div className="flex justify-center mb-4">
+          <Logo size="lg" />
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+
+        <h1 className="text-xl font-bold tracking-tight">
+          Welcome to Orvynos CRM!
+        </h1>
+        <p className="text-sm text-text-secondary mt-1 mb-6">
+          You have successfully logged in.
+        </p>
+
+        <div className="bg-surface-page border border-border rounded-lg p-4 text-left mb-6 space-y-2">
+          <div>
+            <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">
+              User Name
+            </span>
+            <span className="text-sm font-semibold text-text-primary">
+              {session?.user?.name}
+            </span>
+          </div>
+          <div className="border-t border-border/60 pt-2">
+            <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">
+              Email Address
+            </span>
+            <span className="text-sm font-semibold text-text-primary">
+              {session?.user?.email}
+            </span>
+          </div>
+          {session?.user && (session.user as any).role && (
+            <div className="border-t border-border/60 pt-2">
+              <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">
+                User Role
+              </span>
+              <span className="text-xs font-bold bg-brand-orange-tint text-brand-orange px-2 py-0.5 rounded-full inline-block mt-1">
+                {(session.user as any).role}
+              </span>
+            </div>
+          )}
+        </div>
+
+        <form
+          action={async () => {
+            "use server";
+            await signOut({ redirectTo: "/login" });
+          }}
         >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+          <Button 
+            type="submit"
+            className="w-full bg-brand-orange text-white hover:bg-brand-orange-hover font-medium py-2 rounded-lg transition-colors shadow-sm"
+          >
+            Sign Out
+          </Button>
+        </form>
+      </div>
     </div>
   );
 }

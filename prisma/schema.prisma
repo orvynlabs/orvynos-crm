@@ -1,7 +1,11 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
+// Orvyn CRM — complete data model
+// Money convention: all amounts are INR, Decimal(12, 2).
+// Every money formula (pending, revenue, profit) lives in src/lib/finance.ts — never in queries/components.
+// Deletion convention:
+//   - Pure child records (notes, activities, versions) => Cascade
+//   - Client-owned records (projects, payments, generated docs) => Cascade (UI must confirm destructive deletes)
+//   - Optional cross-links (expense->project, document->project, generator->project) => SetNull
+//   - Authorship links (createdBy/uploadedBy) => SetNull, so deleting a user never destroys records
 
 generator client {
   provider = "prisma-client"
@@ -10,4 +14,497 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum ProjectStatus {
+  NEW
+  ONGOING
+  REVIEW
+  COMPLETED
+  ON_HOLD
+  CANCELLED
+}
+
+enum LeadStage {
+  NEW
+  CONTACTED
+  QUALIFIED
+  PROPOSAL_SENT
+  NEGOTIATION
+  WON
+  LOST
+}
+
+enum LeadActivityType {
+  NOTE
+  CALL
+  EMAIL
+  WHATSAPP
+  MEETING
+  STAGE_CHANGE
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  BANK_TRANSFER
+  UPI
+  CASH
+  CHEQUE
+  CARD
+  OTHER
+}
+
+enum ExpenseCategory {
+  SOFTWARE
+  HOSTING
+  DOMAINS
+  MARKETING
+  OFFICE
+  TRAVEL
+  TEAM_PAYMENTS
+  OTHER
+}
+
+enum DocumentType {
+  PROPOSAL
+  AGREEMENT
+  INVOICE
+  QUOTATION
+  RECEIPT
+  UPLOAD
+  OTHER
+}
+
+enum ProposalStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+enum AgreementStatus {
+  DRAFT
+  SENT
+  SIGNED
+  EXPIRED
+  TERMINATED
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum QuotationStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+// ---------------------------------------------------------------------------
+// Auth & Team
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         String   @default("owner") // future RBAC: admin/manager/developer/designer/sales/hr
+  image        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  teamMember     TeamMember?
+  clientNotes    ClientNote[]
+  projectNotes   ProjectNote[]
+  leadActivities LeadActivity[]
+  documents      Document[]
+}
+
+model TeamMember {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String? // e.g. "Co-founder / Full-stack Dev"
+  skills    String[]
+  phone     String?
+  bio       String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  assignments ProjectMember[]
+  payments    TeamPayment[]
+}
+
+// ---------------------------------------------------------------------------
+// Leads
+// ---------------------------------------------------------------------------
+
+model Lead {
+  id             String    @id @default(cuid())
+  name           String // contact person
+  company        String?
+  email          String?
+  phone          String?
+  source         String? // referral, instagram, website, cold outreach...
+  stage          LeadStage @default(NEW)
+  sortOrder      Int       @default(0) // ordering within a kanban column
+  estimatedValue Decimal?  @db.Decimal(12, 2)
+  notes          String?
+  followUpAt     DateTime? // next follow-up (replaces WhatsApp reminders)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // set when the lead is Won and converted
+  convertedClientId String? @unique
+  convertedClient   Client? @relation(fields: [convertedClientId], references: [id], onDelete: SetNull)
+
+  activities LeadActivity[]
+
+  @@index([stage])
+  @@index([followUpAt])
+}
+
+model LeadActivity {
+  id          String           @id @default(cuid())
+  leadId      String
+  lead        Lead             @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  type        LeadActivityType @default(NOTE)
+  content     String
+  createdById String?
+  createdBy   User?            @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime         @default(now())
+
+  @@index([leadId])
+}
+
+// ---------------------------------------------------------------------------
+// Clients
+// ---------------------------------------------------------------------------
+
+model Client {
+  id          String   @id @default(cuid())
+  name        String // company name
+  contactName String?
+  email       String?
+  phone       String?
+  gstin       String? // GST number, optional
+  website     String?
+  address     String?
+  city        String?
+  state       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  convertedFromLead Lead?
+  notes             ClientNote[]
+  projects          Project[]
+  payments          Payment[]
+  documents         Document[]
+  proposals         Proposal[]
+  agreements        Agreement[]
+  invoices          Invoice[]
+  quotations        Quotation[]
+
+  @@index([name])
+}
+
+model ClientNote {
+  id          String   @id @default(cuid())
+  clientId    String
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  content     String
+  createdById String?
+  createdBy   User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+
+  @@index([clientId])
+}
+
+// ---------------------------------------------------------------------------
+// Projects
+// ---------------------------------------------------------------------------
+
+model Project {
+  id          String        @id @default(cuid())
+  clientId    String
+  client      Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  status      ProjectStatus @default(NEW)
+  budget      Decimal       @db.Decimal(12, 2)
+  progress    Int           @default(0) // 0–100
+  techStack   String[]
+  startDate   DateTime?
+  deadline    DateTime?
+  completedAt DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  notes        ProjectNote[]
+  activities   ProjectActivity[]
+  payments     Payment[]
+  expenses     Expense[]
+  members      ProjectMember[]
+  teamPayments TeamPayment[]
+  documents    Document[]
+  proposals    Proposal[]
+  agreements   Agreement[]
+  invoices     Invoice[]
+  quotations   Quotation[]
+
+  @@index([clientId])
+  @@index([status])
+}
+
+model ProjectNote {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  content     String
+  createdById String?
+  createdBy   User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+
+  @@index([projectId])
+}
+
+model ProjectActivity {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  action    String // e.g. "status_changed", "payment_received", "progress_updated"
+  detail    String?
+  createdAt DateTime @default(now())
+
+  @@index([projectId])
+}
+
+// Explicit join table (instead of implicit m:n) so onDelete is explicit
+// and we can add per-project roles later.
+model ProjectMember {
+  id            String     @id @default(cuid())
+  projectId     String
+  project       Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  teamMemberId  String
+  teamMember    TeamMember @relation(fields: [teamMemberId], references: [id], onDelete: Cascade)
+  roleOnProject String? // e.g. "frontend", "design", "PM"
+  assignedAt    DateTime   @default(now())
+
+  @@unique([projectId, teamMemberId])
+}
+
+// ---------------------------------------------------------------------------
+// Payments & Expenses
+// ---------------------------------------------------------------------------
+
+model Payment {
+  id            String        @id @default(cuid())
+  projectId     String
+  project       Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  clientId      String
+  client        Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  amount        Decimal       @db.Decimal(12, 2)
+  method        PaymentMethod
+  status        PaymentStatus @default(COMPLETED)
+  paidAt        DateTime      @default(now())
+  reference     String? // UTR / transaction id / cheque no
+  notes         String?
+  receiptNumber String?       @unique // e.g. RCPT-2026-0001
+  receiptKey    String? // R2 key of the generated PDF receipt
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([projectId])
+  @@index([clientId])
+  @@index([paidAt])
+}
+
+model Expense {
+  id         String          @id @default(cuid())
+  title      String
+  category   ExpenseCategory
+  amount     Decimal         @db.Decimal(12, 2)
+  date       DateTime
+  notes      String?
+  receiptKey String? // uploaded receipt/screenshot in R2
+  projectId  String?
+  project    Project?        @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+
+  @@index([category])
+  @@index([date])
+}
+
+// ---------------------------------------------------------------------------
+// Team payroll
+// ---------------------------------------------------------------------------
+
+model TeamPayment {
+  id           String         @id @default(cuid())
+  teamMemberId String
+  teamMember   TeamMember     @relation(fields: [teamMemberId], references: [id], onDelete: Cascade)
+  projectId    String?
+  project      Project?       @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  amount       Decimal        @db.Decimal(12, 2)
+  status       PaymentStatus  @default(PENDING) // PENDING = owed, COMPLETED = paid out
+  method       PaymentMethod?
+  paidAt       DateTime?
+  notes        String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@index([teamMemberId])
+}
+
+// ---------------------------------------------------------------------------
+// Documents hub
+// ---------------------------------------------------------------------------
+
+model Document {
+  id           String       @id @default(cuid())
+  name         String
+  type         DocumentType
+  r2Key        String
+  mimeType     String?
+  size         Int? // bytes
+  clientId     String?
+  client       Client?      @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  projectId    String?
+  project      Project?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  uploadedById String?
+  uploadedBy   User?        @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  versions DocumentVersion[]
+
+  @@index([clientId])
+  @@index([projectId])
+  @@index([type])
+}
+
+model DocumentVersion {
+  id         String   @id @default(cuid())
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  version    Int
+  r2Key      String
+  size       Int?
+  createdAt  DateTime @default(now())
+
+  @@unique([documentId, version])
+}
+
+// ---------------------------------------------------------------------------
+// Generators (Proposal / Agreement / Invoice / Quotation)
+// All PDFs rendered via Playwright from src/components/pdf-templates.
+// `number` is the human-facing document number, e.g. INV-2026-0007.
+// ---------------------------------------------------------------------------
+
+model Proposal {
+  id         String         @id @default(cuid())
+  number     String         @unique
+  title      String
+  clientId   String
+  client     Client         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  projectId  String?
+  project    Project?       @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  content    Json // structured sections rendered by the PDF template
+  amount     Decimal?       @db.Decimal(12, 2)
+  status     ProposalStatus @default(DRAFT)
+  validUntil DateTime?
+  pdfKey     String? // R2 key of the exported PDF
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  @@index([clientId])
+  @@index([status])
+}
+
+model Agreement {
+  id            String          @id @default(cuid())
+  number        String          @unique
+  title         String
+  clientId      String
+  client        Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  projectId     String?
+  project       Project?        @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  content       Json
+  status        AgreementStatus @default(DRAFT)
+  effectiveDate DateTime?
+  expiresAt     DateTime?
+  pdfKey        String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([clientId])
+  @@index([status])
+}
+
+model Invoice {
+  id        String        @id @default(cuid())
+  number    String        @unique
+  clientId  String
+  client    Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  projectId String?
+  project   Project?      @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  items     Json // [{ description, quantity, rate }]
+  subtotal  Decimal       @db.Decimal(12, 2)
+  taxRate   Decimal       @default(0) @db.Decimal(5, 2) // GST %
+  taxAmount Decimal       @default(0) @db.Decimal(12, 2)
+  total     Decimal       @db.Decimal(12, 2)
+  status    InvoiceStatus @default(DRAFT)
+  issueDate DateTime      @default(now())
+  dueDate   DateTime?
+  notes     String?
+  pdfKey    String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@index([clientId])
+  @@index([status])
+}
+
+model Quotation {
+  id         String          @id @default(cuid())
+  number     String          @unique
+  clientId   String
+  client     Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  projectId  String?
+  project    Project?        @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  items      Json // [{ description, quantity, rate }]
+  subtotal   Decimal         @db.Decimal(12, 2)
+  taxRate    Decimal         @default(0) @db.Decimal(5, 2)
+  taxAmount  Decimal         @default(0) @db.Decimal(12, 2)
+  total      Decimal         @db.Decimal(12, 2)
+  status     QuotationStatus @default(DRAFT)
+  issueDate  DateTime        @default(now())
+  validUntil DateTime?
+  notes      String?
+  pdfKey     String?
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+
+  @@index([clientId])
+  @@index([status])
 }
