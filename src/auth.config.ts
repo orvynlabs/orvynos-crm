@@ -5,8 +5,15 @@ export const authConfig = {
     signIn: "/login",
   },
   callbacks: {
-    authorized({ auth, request: { nextUrl } }) {
+    authorized({ auth, request }) {
       const isLoggedIn = !!auth?.user;
+
+      // When called from Server Components/Actions (auth() calls), request is undefined
+      if (!request) {
+        return isLoggedIn;
+      }
+
+      const { nextUrl } = request;
       const isOnLogin = nextUrl.pathname.startsWith("/login");
       const isOnPublicApi = nextUrl.pathname.startsWith("/api/auth");
       const isPublicAsset = nextUrl.pathname.includes(".") || nextUrl.pathname.startsWith("/_next");
@@ -33,12 +40,14 @@ export const authConfig = {
     // We add user role to session token
     jwt({ token, user }) {
       if (user) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         token.role = (user as any).role;
       }
       return token;
     },
     session({ session, token }) {
       if (session.user) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (session.user as any).role = token.role;
       }
       return session;

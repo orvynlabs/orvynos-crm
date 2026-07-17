@@ -108,6 +108,7 @@
 }
 
 body {
+  font-family: var(--font-sans), sans-serif;
   background-color: var(--background);
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
 }
@@ -171,7 +172,7 @@ body {
   --popover-foreground: var(--text-primary);
   
   --primary: var(--brand-orange);
-  --primary-foreground: var(--surface-white);
+  --primary-foreground: #FFFFFF;
   
   --secondary: var(--brand-orange-tint);
   --secondary-foreground: var(--brand-orange-hover);
@@ -198,7 +199,7 @@ body {
   --sidebar: var(--surface-white);
   --sidebar-foreground: var(--text-primary);
   --sidebar-primary: var(--brand-orange);
-  --sidebar-primary-foreground: var(--surface-white);
+  --sidebar-primary-foreground: #FFFFFF;
   --sidebar-accent: var(--brand-orange-tint);
   --sidebar-accent-foreground: var(--brand-orange);
   --sidebar-border: var(--border);
@@ -210,7 +211,7 @@ body {
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
   }
   html {
     @apply font-sans;

@@ -7,7 +7,12 @@ const globalForPrisma = global as unknown as { prisma: PrismaClient; pool: Pool 
 const connectionString = process.env.DATABASE_URL;
 
 if (!globalForPrisma.pool) {
-  globalForPrisma.pool = new Pool({ connectionString });
+  globalForPrisma.pool = new Pool({
+    connectionString,
+    max: 5,                    // Keep a small pool for serverless Neon
+    idleTimeoutMillis: 30000,  // Release idle connections after 30s
+    connectionTimeoutMillis: 5000, // Fail fast on connection issues
+  });
 }
 
 if (!globalForPrisma.prisma) {
@@ -17,3 +22,4 @@ if (!globalForPrisma.prisma) {
 
 export const prisma = globalForPrisma.prisma;
 export const pool = globalForPrisma.pool;
+

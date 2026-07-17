@@ -46,23 +46,33 @@ export function Topbar({ user }: TopbarProps) {
     <header className="sticky top-0 z-40 flex h-14 items-center gap-2 border-b border-border bg-surface-white px-4">
       {/* Mobile: hamburger opens the nav drawer */}
       <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
-        <SheetTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Open navigation"
-            className="md:hidden text-text-secondary"
-          >
-            <IconMenu2 className="h-5 w-5" stroke={1.75} />
-          </Button>
-        </SheetTrigger>
+        <SheetTrigger
+          render={
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Open navigation"
+              className="md:hidden text-text-secondary cursor-pointer"
+            >
+              <IconMenu2 className="h-5 w-5" stroke={1.75} />
+            </Button>
+          }
+        />
         <SheetContent side="left" className="w-64 bg-surface-white p-0">
           <SheetHeader className="border-b border-border px-4 py-3">
-            <SheetTitle asChild>
-              <Link href="/dashboard" onClick={() => setDrawerOpen(false)}>
-                <Logo size="sm" />
-              </Link>
-            </SheetTitle>
+            <SheetTitle
+              render={
+                <div className="flex items-center gap-2 select-none">
+                  <Link href="/" onClick={() => setDrawerOpen(false)} className="flex items-center">
+                    <Logo size="sm" className="h-6" />
+                  </Link>
+                  <div className="h-4 w-px bg-border" />
+                  <span className="text-[8px] font-extrabold uppercase tracking-widest text-brand-orange bg-brand-orange-tint px-1.5 py-0.5 rounded">
+                    Orvynos CRM
+                  </span>
+                </div>
+              }
+            />
           </SheetHeader>
           <div className="py-3">
             <SidebarNav onNavigate={() => setDrawerOpen(false)} />
@@ -71,29 +81,37 @@ export function Topbar({ user }: TopbarProps) {
       </Sheet>
 
       {/* Topbar logo — shown on mobile where the sidebar is hidden */}
-      <Link href="/dashboard" className="md:hidden">
-        <Logo size="sm" />
-      </Link>
+      <div className="flex items-center gap-2 select-none md:hidden">
+        <Link href="/" className="flex items-center">
+          <Logo size="sm" className="h-6" />
+        </Link>
+        <div className="h-4 w-px bg-border" />
+        <span className="text-[8px] font-extrabold uppercase tracking-widest text-brand-orange bg-brand-orange-tint px-1.5 py-0.5 rounded">
+          Orvynos CRM
+        </span>
+      </div>
 
       <div className="ml-auto flex items-center gap-1">
         <ThemeToggle />
 
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              aria-label="User menu"
-              className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
-            >
-              <Avatar className="h-8 w-8 border border-border">
-                {user.image ? (
-                  <AvatarImage src={user.image} alt={user.name ?? ""} />
-                ) : null}
-                <AvatarFallback className="bg-brand-orange-tint text-brand-orange text-xs font-bold">
-                  {initials(user.name)}
-                </AvatarFallback>
-              </Avatar>
-            </button>
-          </DropdownMenuTrigger>
+          <DropdownMenuTrigger
+            render={
+              <button
+                aria-label="User menu"
+                className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-brand-orange cursor-pointer"
+              >
+                <Avatar className="h-8 w-8 border border-border">
+                  {user.image ? (
+                    <AvatarImage src={user.image} alt={user.name ?? ""} />
+                  ) : null}
+                  <AvatarFallback className="bg-brand-orange-tint text-brand-orange text-xs font-bold">
+                    {initials(user.name)}
+                  </AvatarFallback>
+                </Avatar>
+              </button>
+            }
+          />
           <DropdownMenuContent align="end" className="w-52">
             <DropdownMenuLabel>
               <div className="text-sm font-semibold text-text-primary">
