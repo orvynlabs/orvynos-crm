@@ -186,7 +186,7 @@ export function ProjectForm({
   const selectedClientName = clients.find((c) => c.id === selectedClientId)?.name || "Select a client...";
 
   return (
-    <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-5 text-left font-sans">
+    <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-6.5 text-left font-sans">
       {errorMsg && (
         <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold rounded-lg flex items-center gap-2 select-none">
           <IconAlertCircle className="h-4.5 w-4.5 shrink-0" />
@@ -195,7 +195,7 @@ export function ProjectForm({
       )}
 
       {/* 1. Project Name */}
-      <div className="space-y-1">
+      <div className="space-y-1.5">
         <label className="text-[10px] font-extrabold text-text-primary uppercase tracking-wider">
           Project Name <span className="text-rose-500">*</span>
         </label>
@@ -212,7 +212,7 @@ export function ProjectForm({
       </div>
 
       {/* 2. Project Description */}
-      <div className="space-y-1">
+      <div className="space-y-1.5">
         <label className="text-[10px] font-extrabold text-text-primary uppercase tracking-wider">
           Description
         </label>
@@ -230,7 +230,7 @@ export function ProjectForm({
         <label className="text-[10px] font-extrabold text-text-primary uppercase tracking-wider">
           Project Type
         </label>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* Card 1: One-off Project */}
           <button
             type="button"
@@ -266,9 +266,9 @@ export function ProjectForm({
       </div>
 
       {/* 4. Client and Status side-by-side */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Client Selector */}
-        <div className="space-y-1 relative">
+        <div className="space-y-1.5 relative">
           <label className="text-[10px] font-extrabold text-text-primary uppercase tracking-wider">
             Client <span className="text-rose-500">*</span>
           </label>
@@ -317,7 +317,7 @@ export function ProjectForm({
         </div>
 
         {/* Status select */}
-        <div className="space-y-1">
+        <div className="space-y-1.5">
           <label className="text-[10px] font-extrabold text-text-primary uppercase tracking-wider">
             Status
           </label>
@@ -335,7 +335,7 @@ export function ProjectForm({
       </div>
 
       {/* 5. Budget (Full width) */}
-      <div className="space-y-1">
+      <div className="space-y-1.5">
         <label className="text-[10px] font-extrabold text-text-primary uppercase tracking-wider">
           Budget Amount (₹) <span className="text-rose-500">*</span>
         </label>
@@ -352,9 +352,9 @@ export function ProjectForm({
       </div>
 
       {/* 6. Start date and Target Deadline side-by-side */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Start Date */}
-        <div className="space-y-1">
+        <div className="space-y-1.5">
           <label className="text-[10px] font-extrabold text-text-primary uppercase tracking-wider flex items-center gap-1.5 select-none">
             <IconCalendar className="h-3.5 w-3.5" /> Start Date
           </label>
@@ -367,7 +367,7 @@ export function ProjectForm({
         </div>
 
         {/* Target Deadline */}
-        <div className="space-y-1">
+        <div className="space-y-1.5">
           <label className="text-[10px] font-extrabold text-text-primary uppercase tracking-wider flex items-center gap-1.5 select-none">
             <IconCalendar className="h-3.5 w-3.5" /> Target Deadline
           </label>
@@ -381,13 +381,13 @@ export function ProjectForm({
       </div>
 
       {/* 7. Domain & Hosting (Optional section) */}
-      <div className="border border-border/60 rounded-xl p-4 bg-surface-page/35 space-y-3">
+      <div className="border border-border/60 rounded-xl p-4 bg-surface-page/35 space-y-3.5">
         <div className="flex items-center gap-2 select-none border-b border-border/40 pb-2">
           <IconWorld className="h-4.5 w-4.5 text-text-secondary" />
           <span className="text-xs font-black text-text-primary uppercase tracking-wider">Domain & Hosting (Optional)</span>
         </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
             <label className="text-[9px] font-extrabold text-text-secondary uppercase">Domain Name</label>
             <input
               type="text"
@@ -397,7 +397,7 @@ export function ProjectForm({
               className="flex h-9 w-full rounded-lg border border-border bg-surface-white px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-orange font-semibold"
             />
           </div>
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             <label className="text-[9px] font-extrabold text-text-secondary uppercase">Domain Expiry</label>
             <input
               type="date"

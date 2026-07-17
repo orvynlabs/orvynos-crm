@@ -77,7 +77,7 @@ export function ClientForm({
   };
 
   return (
-    <form onSubmit={handleSubmit(handleLocalSubmit)} className="space-y-4 font-sans text-left">
+    <form onSubmit={handleSubmit(handleLocalSubmit)} className="space-y-5.5 font-sans text-left">
       {errorMsg && (
         <div className="bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 p-3 rounded-lg text-xs border border-rose-200 dark:border-rose-900/50 flex items-center gap-2">
           <IconAlertCircle className="h-4 w-4 shrink-0" />
@@ -86,7 +86,7 @@ export function ClientForm({
       )}
 
       {/* Company Name */}
-      <div className="space-y-1">
+      <div className="space-y-1.5">
         <label className="text-[10px] font-extrabold text-text-primary uppercase tracking-wider">
           Company Name <span className="text-rose-500">*</span>
         </label>
@@ -103,7 +103,7 @@ export function ClientForm({
       </div>
 
       {/* Contact Person */}
-      <div className="space-y-1">
+      <div className="space-y-1.5">
         <label className="text-[10px] font-extrabold text-text-primary uppercase tracking-wider">
           Contact Person
         </label>
@@ -116,9 +116,9 @@ export function ClientForm({
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Email */}
-        <div className="space-y-1">
+        <div className="space-y-1.5">
           <label className="text-[10px] font-extrabold text-text-primary uppercase tracking-wider">
             Email Address
           </label>
@@ -135,7 +135,7 @@ export function ClientForm({
         </div>
 
         {/* Phone */}
-        <div className="space-y-1">
+        <div className="space-y-1.5">
           <label className="text-[10px] font-extrabold text-text-primary uppercase tracking-wider">
             Phone Number
           </label>
@@ -149,9 +149,9 @@ export function ClientForm({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Website */}
-        <div className="space-y-1">
+        <div className="space-y-1.5">
           <label className="text-[10px] font-extrabold text-text-primary uppercase tracking-wider">
             Website URL
           </label>
@@ -168,7 +168,7 @@ export function ClientForm({
         </div>
 
         {/* GSTIN */}
-        <div className="space-y-1">
+        <div className="space-y-1.5">
           <label className="text-[10px] font-extrabold text-text-primary uppercase tracking-wider">
             GSTIN (Optional)
           </label>
@@ -183,7 +183,7 @@ export function ClientForm({
       </div>
 
       {/* Address */}
-      <div className="space-y-1">
+      <div className="space-y-1.5">
         <label className="text-[10px] font-extrabold text-text-primary uppercase tracking-wider">
           Office Address
         </label>
@@ -196,9 +196,9 @@ export function ClientForm({
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* City */}
-        <div className="space-y-1">
+        <div className="space-y-1.5">
           <label className="text-[10px] font-extrabold text-text-primary uppercase tracking-wider">
             City
           </label>
@@ -212,7 +212,7 @@ export function ClientForm({
         </div>
 
         {/* State */}
-        <div className="space-y-1">
+        <div className="space-y-1.5">
           <label className="text-[10px] font-extrabold text-text-primary uppercase tracking-wider">
             State
           </label>
@@ -227,7 +227,7 @@ export function ClientForm({
       </div>
 
       {/* Notes */}
-      <div className="space-y-1">
+      <div className="space-y-1.5">
         <label className="text-[10px] font-extrabold text-text-primary uppercase tracking-wider">
           Client Notes
         </label>

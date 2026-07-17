@@ -484,7 +484,7 @@ export function ProjectsClient({ initialProjects, clients, teamMembers }: Projec
       </div>
 
       {/* MOBILE COLUMN SELECTOR TAB BAR (visible only on mobile) */}
-      <div className="md:hidden border-b border-border flex items-center gap-1 overflow-x-auto py-1 scrollbar-hide select-none">
+      <div className="md:hidden border-b border-border flex items-center gap-2 overflow-x-auto py-1 scrollbar-hide select-none">
         {COLUMNS.map((col) => {
           const isActive = mobileActiveColumn === col.key;
           const count = groupedProjects[col.key].length;
@@ -492,11 +492,12 @@ export function ProjectsClient({ initialProjects, clients, teamMembers }: Projec
             <button
               key={col.key}
               onClick={() => setMobileActiveColumn(col.key)}
-              className={`px-3.5 py-2 text-[10px] font-extrabold uppercase tracking-wider border-b-2 rounded-t-lg transition-all duration-150 whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+              className={`px-4 py-3 text-xs font-extrabold uppercase tracking-wider border-b-2 rounded-t-lg transition-all duration-100 active:scale-95 whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
                 isActive
                   ? "border-brand-orange text-brand-orange bg-brand-orange-tint/10"
                   : "border-transparent text-text-secondary hover:text-text-primary"
               }`}
+              style={{ WebkitTapHighlightColor: "transparent" }}
             >
               {col.label}
               <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${isActive ? "bg-brand-orange/20 text-brand-orange" : "bg-surface-page text-text-secondary"}`}>

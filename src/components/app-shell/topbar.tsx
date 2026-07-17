@@ -1,28 +1,19 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
-import { IconMenu2, IconLogout } from "@tabler/icons-react";
+import { IconLogout } from "@tabler/icons-react";
 import { Logo } from "@/components/logo";
-import { SidebarNav } from "./sidebar-nav";
 import { ThemeToggle } from "./theme-toggle";
-import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
 import { signOutAction } from "@/lib/actions/auth";
 
 type TopbarProps = {
@@ -40,46 +31,8 @@ function initials(name?: string | null) {
 }
 
 export function Topbar({ user }: TopbarProps) {
-  const [drawerOpen, setDrawerOpen] = useState(false);
-
   return (
     <header className="sticky top-0 z-40 flex h-14 items-center gap-2 border-b border-border bg-surface-white px-4">
-      {/* Mobile: hamburger opens the nav drawer */}
-      <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
-        <SheetTrigger
-          render={
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Open navigation"
-              className="md:hidden text-text-secondary cursor-pointer"
-            >
-              <IconMenu2 className="h-5 w-5" stroke={1.75} />
-            </Button>
-          }
-        />
-        <SheetContent side="left" className="w-64 bg-surface-white p-0">
-          <SheetHeader className="border-b border-border px-4 py-3">
-            <SheetTitle
-              render={
-                <div className="flex items-center gap-2 select-none">
-                  <Link href="/" onClick={() => setDrawerOpen(false)} className="flex items-center">
-                    <Logo size="sm" className="h-6" />
-                  </Link>
-                  <div className="h-4 w-px bg-border" />
-                  <span className="text-[8px] font-extrabold uppercase tracking-widest text-brand-orange bg-brand-orange-tint px-1.5 py-0.5 rounded">
-                    Orvynos CRM
-                  </span>
-                </div>
-              }
-            />
-          </SheetHeader>
-          <div className="py-3">
-            <SidebarNav onNavigate={() => setDrawerOpen(false)} />
-          </div>
-        </SheetContent>
-      </Sheet>
-
       {/* Topbar logo — shown on mobile where the sidebar is hidden */}
       <div className="flex items-center gap-2 select-none md:hidden">
         <Link href="/" className="flex items-center">
@@ -91,7 +44,7 @@ export function Topbar({ user }: TopbarProps) {
         </span>
       </div>
 
-      <div className="ml-auto flex items-center gap-1">
+      <div className="ml-auto flex items-center gap-2">
         <ThemeToggle />
 
         <DropdownMenu>
@@ -99,7 +52,7 @@ export function Topbar({ user }: TopbarProps) {
             render={
               <button
                 aria-label="User menu"
-                className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-brand-orange cursor-pointer"
+                className="inline-flex items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-brand-orange cursor-pointer"
               >
                 <Avatar className="h-8 w-8 border border-border">
                   {user.image ? (
@@ -113,14 +66,16 @@ export function Topbar({ user }: TopbarProps) {
             }
           />
           <DropdownMenuContent align="end" className="w-52">
-            <DropdownMenuLabel>
-              <div className="text-sm font-semibold text-text-primary">
-                {user.name}
-              </div>
-              <div className="text-xs font-normal text-text-secondary">
-                {user.email}
-              </div>
-            </DropdownMenuLabel>
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>
+                <div className="text-sm font-semibold text-text-primary">
+                  {user.name}
+                </div>
+                <div className="text-xs font-normal text-text-secondary">
+                  {user.email}
+                </div>
+              </DropdownMenuLabel>
+            </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onSelect={() => signOutAction()}

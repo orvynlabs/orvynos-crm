@@ -1,4 +1,4 @@
-import { PrismaClient, ProjectStatus, LeadStage, LeadActivityType, PaymentStatus, PaymentMethod, ExpenseCategory } from '../src/generated/prisma';
+import { PrismaClient, ProjectStatus, LeadStage, LeadActivityType, PaymentStatus, PaymentMethod, ExpenseCategory } from '../src/generated/prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 

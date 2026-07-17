@@ -18,7 +18,7 @@ export default async function DashboardPage() {
     session,
     clientsCount,
     projectsCount,
-    _leadsCount,
+    , // leadsCount
     newProjectsCount,
     ongoingProjectsCount,
     completedProjectsCount,
@@ -336,9 +336,11 @@ export default async function DashboardPage() {
                         {pmt.method.replace("_", " ")}
                       </span>
                     </td>
-                    <td className="py-3 text-text-secondary flex items-center gap-1.5">
-                      <IconCalendar className="h-3.5 w-3.5 text-text-secondary/65" />
-                      {new Date(pmt.paidAt).toLocaleDateString("en-IN")}
+                    <td className="py-3 text-text-secondary">
+                      <div className="flex items-center gap-1.5">
+                        <IconCalendar className="h-3.5 w-3.5 text-text-secondary/65" />
+                        {new Date(pmt.paidAt).toLocaleDateString("en-IN")}
+                      </div>
                     </td>
                     <td className="py-3 text-right font-bold text-emerald-600 dark:text-emerald-400">
                       +₹{Number(pmt.amount).toLocaleString("en-IN")}

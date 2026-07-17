@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { Logo } from "@/components/logo";
 import { SidebarNav } from "@/components/app-shell/sidebar-nav";
 import { Topbar } from "@/components/app-shell/topbar";
+import { BottomNav } from "@/components/app-shell/bottom-nav";
 
 export default async function DashboardLayout({
   children,
@@ -32,7 +33,8 @@ export default async function DashboardLayout({
       {/* Main column */}
       <div className="md:pl-60">
         <Topbar user={session.user} />
-        <main className="p-4 md:p-6">{children}</main>
+        <main className="p-4 pb-20 md:p-6">{children}</main>
+        <BottomNav />
       </div>
     </div>
   );

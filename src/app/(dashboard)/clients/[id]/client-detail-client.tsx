@@ -364,14 +364,15 @@ export function ClientDetailClient({ client }: ClientDetailClientProps) {
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
                 className={`
-                  flex items-center gap-2 px-4 py-2.5 text-xs font-bold whitespace-nowrap
-                  border-b-2 transition-all duration-150 cursor-pointer select-none
+                  flex items-center gap-2 px-4 py-3.5 text-xs font-bold whitespace-nowrap
+                  border-b-2 transition-all duration-100 active:scale-95 cursor-pointer select-none
                   ${
                     isActive
                       ? "border-brand-orange text-brand-orange"
                       : "border-transparent text-text-secondary hover:text-text-primary hover:border-border"
                   }
                 `}
+                style={{ WebkitTapHighlightColor: "transparent" }}
               >
                 <tab.icon className="h-4 w-4" stroke={1.75} />
                 {tab.label}

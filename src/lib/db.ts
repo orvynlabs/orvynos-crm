@@ -1,4 +1,4 @@
-import { PrismaClient } from '../generated/prisma';
+import { PrismaClient } from '../generated/prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 
@@ -11,7 +11,7 @@ if (!globalForPrisma.pool) {
     connectionString,
     max: 5,                    // Keep a small pool for serverless Neon
     idleTimeoutMillis: 30000,  // Release idle connections after 30s
-    connectionTimeoutMillis: 5000, // Fail fast on connection issues
+    connectionTimeoutMillis: 15000, // Increase to 15s to allow for serverless cold-starts
   });
 }
 

@@ -365,13 +365,13 @@ export function ClientsClient({ initialClients, metrics }: ClientsClientProps) {
                         {client.projects.slice(0, 2).map((proj) => (
                           <div
                             key={proj.id}
-                            className="py-1.5 flex items-center justify-between text-xs"
+                            className="py-1.5 flex items-center justify-between text-xs gap-2"
                           >
-                            <span className="font-bold text-text-primary truncate max-w-[200px]">
+                            <span className="font-bold text-text-primary truncate flex-1 min-w-0">
                               {proj.name}
                             </span>
                             <span
-                              className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider ${getStatusStyles(
+                              className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider shrink-0 ${getStatusStyles(
                                 proj.status
                               )}`}
                             >
