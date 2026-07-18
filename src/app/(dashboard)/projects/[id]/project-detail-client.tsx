@@ -18,6 +18,7 @@ import {
   IconEdit,
   IconClock,
   IconLoader,
+  IconPlus,
 } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,6 +31,9 @@ import {
 } from "@/components/ui/sheet";
 import { ProjectForm, type ProjectFormValues } from "@/components/projects/project-form";
 import { updateProject } from "../actions";
+import { PaymentForm } from "@/components/payments/payment-form";
+import { PaymentHistoryTable } from "@/components/payments/payment-history-table";
+import { createPayment } from "@/app/(dashboard)/payments/actions";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -43,6 +47,8 @@ type PaymentRecord = {
   paidAt: string;
   reference: string | null;
   notes: string | null;
+  receiptNumber: string | null;
+  receiptKey: string | null;
 };
 
 type MemberRecord = {
@@ -235,6 +241,27 @@ export function ProjectDetailClient({ project, clients, teamMembers }: ProjectDe
         router.refresh();
       } else {
         setErrorMsg(res.error || "Failed to update project.");
+      }
+    });
+  };
+
+  const [isPaymentSheetOpen, setIsPaymentSheetOpen] = useState(false);
+  const [paymentErrorMsg, setPaymentErrorMsg] = useState("");
+  const [isPaymentPending, startPaymentTransition] = useTransition();
+
+  const handlePaymentSubmit = async (values: any) => {
+    setPaymentErrorMsg("");
+    startPaymentTransition(async () => {
+      const res = await createPayment({
+        ...values,
+        projectId: project.id,
+        clientId: project.client.id,
+      });
+      if (res.success) {
+        setIsPaymentSheetOpen(false);
+        router.refresh();
+      } else {
+        setPaymentErrorMsg(res.error || "Failed to log payment.");
       }
     });
   };
@@ -649,46 +676,56 @@ export function ProjectDetailClient({ project, clients, teamMembers }: ProjectDe
       {activeTab === "payments" && (
         <div className="animate-in fade-in duration-200">
           <div className="bg-surface-white border border-border rounded-xl p-6 shadow-sm">
-            <h3 className="text-sm font-bold text-text-primary flex items-center gap-2 mb-4">
-              <IconCreditCard className="h-5 w-5 text-brand-orange" /> Payment Ledger
-            </h3>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-sm font-bold text-text-primary flex items-center gap-2">
+                <IconCreditCard className="h-5 w-5 text-brand-orange" /> Payment Ledger
+              </h3>
+              <Sheet open={isPaymentSheetOpen} onOpenChange={setIsPaymentSheetOpen}>
+                <SheetTrigger
+                  render={
+                    <Button
+                      size="sm"
+                      className="h-8 bg-brand-orange hover:bg-brand-orange-hover text-white font-bold text-xs cursor-pointer select-none border-0 shadow-none flex items-center gap-1.5"
+                    >
+                      <IconPlus className="h-3.5 w-3.5" /> Log Payment
+                    </Button>
+                  }
+                />
+                <SheetContent className="w-full max-w-[450px] p-6 bg-surface-white border-l border-border h-full flex flex-col justify-between overflow-y-auto">
+                  <div>
+                    <SheetHeader className="mb-6">
+                      <SheetTitle className="text-lg font-bold text-text-primary text-left">
+                        Log Project Payment
+                      </SheetTitle>
+                      <SheetDescription className="text-xs text-text-secondary mt-1 text-left">
+                        Record a client payment for this project.
+                      </SheetDescription>
+                    </SheetHeader>
+                    <PaymentForm
+                      projects={[]}
+                      fixedProjectId={project.id}
+                      fixedClientId={project.client.id}
+                      onSubmit={handlePaymentSubmit}
+                      isPending={isPaymentPending}
+                      errorMsg={paymentErrorMsg}
+                      onCancel={() => setIsPaymentSheetOpen(false)}
+                    />
+                  </div>
+                </SheetContent>
+              </Sheet>
+            </div>
 
-            {paymentsWithRunning.length > 0 ? (
-              <div className="overflow-x-auto -mx-6 px-6">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead>
-                    <tr className="border-b border-border/60 text-text-secondary font-bold">
-                      <th className="pb-3 font-semibold">Date</th>
-                      <th className="pb-3 font-semibold">Method</th>
-                      <th className="pb-3 font-semibold">Reference</th>
-                      <th className="pb-3 font-semibold">Status</th>
-                      <th className="pb-3 text-right font-semibold">Running Pending</th>
-                      <th className="pb-3 text-right font-semibold">Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {paymentsWithRunning.map((pmt) => (
-                      <tr key={pmt.id} className="border-b border-border/30 hover:bg-surface-page/50 transition-colors">
-                        <td className="py-3 text-text-primary font-semibold">{formatDate(pmt.paidAt)}</td>
-                        <td className="py-3 text-text-secondary font-medium capitalize">{pmt.method.toLowerCase()}</td>
-                        <td className="py-3 text-text-secondary font-medium">{pmt.reference || "—"}</td>
-                        <td className="py-3">
-                          <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase ${getPaymentStatusClasses(pmt.status)}`}>
-                            {pmt.status.toLowerCase()}
-                          </span>
-                        </td>
-                        <td className="py-3 text-right text-amber-600 font-bold">{formatCurrency(pmt.runningPending)}</td>
-                        <td className="py-3 text-right text-text-primary font-black">{formatCurrency(Number(pmt.amount))}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="py-8 text-center text-text-secondary text-xs flex items-center justify-center gap-1.5 border border-dashed border-border rounded-lg">
-                No payments recorded for this project.
-              </div>
-            )}
+            <PaymentHistoryTable
+              payments={project.payments.map((p) => ({
+                ...p,
+                amount: Number(p.amount),
+                paidAt: p.paidAt,
+                method: p.method as any,
+                status: p.status as any,
+              }))}
+              showClientColumn={false}
+              showProjectColumn={false}
+            />
           </div>
         </div>
       )}

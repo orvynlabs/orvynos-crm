@@ -190,7 +190,7 @@ export function ClientDetailClient({ client }: ClientDetailClientProps) {
       {/* Back button */}
       <Link
         href="/clients"
-        className="inline-flex items-center gap-1.5 text-xs font-bold text-text-secondary hover:text-brand-orange transition-colors select-none"
+        className="inline-flex items-center gap-1.5 text-xs md:text-sm font-bold text-text-secondary hover:text-brand-orange transition-colors select-none"
       >
         <IconArrowLeft className="h-4 w-4" /> Back to Clients
       </Link>
@@ -200,15 +200,15 @@ export function ClientDetailClient({ client }: ClientDetailClientProps) {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1">
             <div className="flex items-center gap-2.5">
-              <h1 className="text-2xl font-extrabold tracking-tight text-text-primary capitalize">
+              <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight text-text-primary capitalize">
                 {client.name}
               </h1>
-              <span className="text-[10px] font-extrabold bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full uppercase tracking-wider">
+              <span className="text-[10px] md:text-xs font-extrabold bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full uppercase tracking-wider">
                 Active Partner
               </span>
             </div>
             {client.contactName && (
-              <p className="text-sm font-semibold text-text-secondary">
+              <p className="text-sm md:text-base font-semibold text-text-secondary">
                 Primary Contact: {client.contactName}
               </p>
             )}
@@ -260,17 +260,17 @@ export function ClientDetailClient({ client }: ClientDetailClientProps) {
               </SheetContent>
             </Sheet>
 
-            <span className="text-xs text-text-secondary font-medium">
+            <span className="text-xs md:text-sm text-text-secondary font-medium">
               Registered: {new Date(client.createdAt).toLocaleDateString("en-IN")}
             </span>
           </div>
         </div>
 
         {/* Info Grid */}
-        <div className="grid gap-4 mt-6 sm:grid-cols-2 md:grid-cols-3 pt-6 border-t border-border/60 text-xs">
+        <div className="grid gap-4 mt-6 sm:grid-cols-2 md:grid-cols-3 pt-6 border-t border-border/60 text-xs md:text-[14px]">
           {client.email && (
             <div className="flex items-center gap-2.5 text-text-primary">
-              <IconMail className="h-4.5 w-4.5 text-text-secondary" />
+              <IconMail className="h-4.5 w-4.5 md:h-5 md:w-5 text-text-secondary" />
               <a href={`mailto:${client.email}`} className="hover:text-brand-orange font-semibold">
                 {client.email}
               </a>
@@ -278,7 +278,7 @@ export function ClientDetailClient({ client }: ClientDetailClientProps) {
           )}
           {client.phone && (
             <div className="flex items-center gap-2.5 text-text-primary">
-              <IconPhone className="h-4.5 w-4.5 text-text-secondary" />
+              <IconPhone className="h-4.5 w-4.5 md:h-5 md:w-5 text-text-secondary" />
               <a href={`tel:${client.phone}`} className="hover:text-brand-orange font-semibold">
                 {client.phone}
               </a>
@@ -286,7 +286,7 @@ export function ClientDetailClient({ client }: ClientDetailClientProps) {
           )}
           {client.website && (
             <div className="flex items-center gap-2.5 text-text-primary">
-              <IconWorld className="h-4.5 w-4.5 text-text-secondary" />
+              <IconWorld className="h-4.5 w-4.5 md:h-5 md:w-5 text-text-secondary" />
               <a
                 href={client.website}
                 target="_blank"
@@ -299,13 +299,13 @@ export function ClientDetailClient({ client }: ClientDetailClientProps) {
           )}
           {client.gstin && (
             <div className="flex items-center gap-2.5 text-text-primary">
-              <IconReceipt className="h-4.5 w-4.5 text-text-secondary" />
+              <IconReceipt className="h-4.5 w-4.5 md:h-5 md:w-5 text-text-secondary" />
               <span className="font-semibold uppercase">GSTIN: {client.gstin}</span>
             </div>
           )}
           {(client.address || client.city) && (
             <div className="flex items-center gap-2.5 text-text-primary sm:col-span-2">
-              <IconMapPin className="h-4.5 w-4.5 text-text-secondary" />
+              <IconMapPin className="h-4.5 w-4.5 md:h-5 md:w-5 text-text-secondary" />
               <span className="font-semibold text-text-secondary">
                 {client.address && `${client.address}, `}
                 {client.city}
@@ -319,78 +319,73 @@ export function ClientDetailClient({ client }: ClientDetailClientProps) {
       {/* METRIC GRID PANEL */}
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
         <div className="bg-surface-white border border-border rounded-xl p-4 shadow-sm">
-          <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">
+          <span className="text-[10px] md:text-xs font-bold text-text-secondary uppercase tracking-wider block">
             Total Projects
           </span>
-          <span className="text-xl font-extrabold text-text-primary mt-1 block">
+          <span className="text-xl md:text-3xl font-extrabold text-text-primary mt-1 block">
             {totalProjects}
           </span>
         </div>
         <div className="bg-surface-white border border-border rounded-xl p-4 shadow-sm">
-          <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">
+          <span className="text-[10px] md:text-xs font-bold text-text-secondary uppercase tracking-wider block">
             Active Projects
           </span>
-          <span className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-1 block">
+          <span className="text-xl md:text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-1 block">
             {activeProjects}
           </span>
         </div>
         <div className="bg-surface-white border border-border rounded-xl p-4 shadow-sm">
-          <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">
+          <span className="text-[10px] md:text-xs font-bold text-text-secondary uppercase tracking-wider block">
             Collected Revenue
           </span>
-          <span className="text-xl font-extrabold text-text-primary mt-1 block">
+          <span className="text-xl md:text-3xl font-extrabold text-text-primary mt-1 block">
             ₹{totalCollected.toLocaleString("en-IN")}
           </span>
         </div>
         <div className="bg-surface-white border border-border rounded-xl p-4 shadow-sm">
-          <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">
+          <span className="text-[10px] md:text-xs font-bold text-text-secondary uppercase tracking-wider block">
             Pending Balance
           </span>
-          <span className="text-xl font-extrabold text-amber-600 dark:text-amber-400 mt-1 block">
+          <span className="text-xl md:text-3xl font-extrabold text-amber-600 dark:text-amber-400 mt-1 block">
             ₹{totalPending.toLocaleString("en-IN")}
           </span>
         </div>
       </div>
 
-      {/* ============================================================ */}
-      {/*  TAB NAVIGATION                                               */}
-      {/* ============================================================ */}
-      <div className="border-b border-border">
-        <nav className="flex gap-0 -mb-px overflow-x-auto scrollbar-hide">
-          {TABS.map((tab) => {
-            const isActive = activeTab === tab.key;
-            return (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                className={`
-                  flex items-center gap-2 px-4 py-3.5 text-xs font-bold whitespace-nowrap
-                  border-b-2 transition-all duration-100 active:scale-95 cursor-pointer select-none
-                  ${
-                    isActive
-                      ? "border-brand-orange text-brand-orange"
-                      : "border-transparent text-text-secondary hover:text-text-primary hover:border-border"
-                  }
-                `}
-                style={{ WebkitTapHighlightColor: "transparent" }}
-              >
-                <tab.icon className="h-4 w-4" stroke={1.75} />
-                {tab.label}
-                {/* Badge counts for projects and payments */}
-                {tab.key === "projects" && client.projects.length > 0 && (
-                  <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-full ${isActive ? "bg-brand-orange/10 text-brand-orange" : "bg-surface-page text-text-secondary"}`}>
-                    {client.projects.length}
-                  </span>
-                )}
-                {tab.key === "payments" && client.payments.length > 0 && (
-                  <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-full ${isActive ? "bg-brand-orange/10 text-brand-orange" : "bg-surface-page text-text-secondary"}`}>
-                    {client.payments.length}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </nav>
+      {/* TAB NAVIGATION - Styled as Segmented Slider control */}
+      <div className="bg-stone-100/80 p-1.5 rounded-xl flex w-full md:w-max gap-1 select-none overflow-x-auto scrollbar-hide">
+        {TABS.map((tab) => {
+          const isActive = activeTab === tab.key;
+          return (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`
+                flex-1 md:flex-none px-5 py-2 font-bold text-xs md:text-sm rounded-lg cursor-pointer transition-all duration-200 whitespace-nowrap min-h-[36px] flex items-center justify-center gap-1.5
+                ${
+                  isActive
+                    ? "bg-white text-brand-orange shadow-sm"
+                    : "text-text-secondary hover:text-text-primary"
+                }
+              `}
+              style={{ WebkitTapHighlightColor: "transparent" }}
+            >
+              <tab.icon className="h-4 w-4" stroke={1.75} />
+              {tab.label}
+              {/* Badge counts for projects and payments */}
+              {tab.key === "projects" && client.projects.length > 0 && (
+                <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-full ${isActive ? "bg-brand-orange-tint text-brand-orange" : "bg-stone-200/60 text-text-secondary"}`}>
+                  {client.projects.length}
+                </span>
+              )}
+              {tab.key === "payments" && client.payments.length > 0 && (
+                <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-full ${isActive ? "bg-brand-orange-tint text-brand-orange" : "bg-stone-200/60 text-text-secondary"}`}>
+                  {client.payments.length}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* ============================================================ */}
@@ -405,13 +400,13 @@ export function ClientDetailClient({ client }: ClientDetailClientProps) {
             {/* Recent Projects (top 3) */}
             <div className="bg-surface-white border border-border rounded-xl p-6 shadow-sm">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-bold text-text-primary flex items-center gap-2">
+                <h3 className="text-sm md:text-base font-bold text-text-primary flex items-center gap-2">
                   <IconBriefcase className="h-5 w-5 text-brand-orange" /> Recent Projects
                 </h3>
                 {client.projects.length > 3 && (
                   <button
                     onClick={() => setActiveTab("projects")}
-                    className="text-[10px] font-bold text-brand-orange hover:underline cursor-pointer select-none"
+                    className="text-[10px] md:text-xs font-bold text-brand-orange hover:underline cursor-pointer select-none"
                   >
                     View all →
                   </button>
@@ -426,16 +421,16 @@ export function ClientDetailClient({ client }: ClientDetailClientProps) {
                       className="border border-border/70 rounded-lg p-3.5 bg-surface-page/50 hover:bg-surface-page/70 transition-colors"
                     >
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-bold text-text-primary capitalize">
+                        <span className="text-sm md:text-[15.5px] font-bold text-text-primary capitalize">
                           {project.name}
                         </span>
                         <span
-                          className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider ${getStatusStyles(project.status)}`}
+                          className={`text-[9px] md:text-[10.5px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider ${getStatusStyles(project.status)}`}
                         >
                           {project.status.toLowerCase()}
                         </span>
                       </div>
-                      <div className="mt-2 flex items-center justify-between text-[11px] text-text-secondary font-medium">
+                      <div className="mt-2 flex items-center justify-between text-[11px] md:text-xs text-text-secondary font-medium">
                         <span>₹{Number(project.budget).toLocaleString("en-IN")}</span>
                         <span>{project.progress}% complete</span>
                       </div>
@@ -452,13 +447,13 @@ export function ClientDetailClient({ client }: ClientDetailClientProps) {
             {/* Recent Payments (top 3) */}
             <div className="bg-surface-white border border-border rounded-xl p-6 shadow-sm">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-bold text-text-primary flex items-center gap-2">
+                <h3 className="text-sm md:text-base font-bold text-text-primary flex items-center gap-2">
                   <IconCreditCard className="h-5 w-5 text-emerald-600 dark:text-emerald-400" /> Recent Payments
                 </h3>
                 {client.payments.length > 3 && (
                   <button
                     onClick={() => setActiveTab("payments")}
-                    className="text-[10px] font-bold text-brand-orange hover:underline cursor-pointer select-none"
+                    className="text-[10px] md:text-xs font-bold text-brand-orange hover:underline cursor-pointer select-none"
                   >
                     View all →
                   </button>
@@ -473,15 +468,15 @@ export function ClientDetailClient({ client }: ClientDetailClientProps) {
                       className="flex items-center justify-between border border-border/70 rounded-lg p-3.5 bg-surface-page/50"
                     >
                       <div>
-                        <span className="text-xs font-bold text-text-primary capitalize block">
+                        <span className="text-xs md:text-[14.5px] font-bold text-text-primary capitalize block">
                           {pmt.project?.name || "Client Level Payment"}
                         </span>
-                        <span className="text-[10px] text-text-secondary font-medium">
+                        <span className="text-[10px] md:text-xs text-text-secondary font-medium">
                           {new Date(pmt.paidAt).toLocaleDateString("en-IN")} · {pmt.method.replace("_", " ")}
                         </span>
                       </div>
                       <span
-                        className={`text-sm font-bold ${
+                        className={`text-sm md:text-base font-black ${
                           pmt.status === "COMPLETED"
                             ? "text-emerald-600 dark:text-emerald-400"
                             : "text-amber-600 dark:text-amber-400"
@@ -504,26 +499,26 @@ export function ClientDetailClient({ client }: ClientDetailClientProps) {
           <div className="space-y-6">
             {/* Contract statistics */}
             <div className="bg-surface-white border border-border rounded-xl p-6 shadow-sm">
-              <h3 className="text-sm font-bold text-text-primary mb-4">Contract Statistics</h3>
+              <h3 className="text-sm md:text-base font-bold text-text-primary mb-4">Contract Statistics</h3>
               <div className="space-y-4">
                 <div className="p-3.5 bg-surface-page rounded-lg border border-border/60">
-                  <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center justify-between text-xs md:text-sm">
                     <span className="font-semibold text-text-secondary">Conversion Value</span>
-                    <div className="flex items-center gap-0.5 text-emerald-600 font-bold text-[10px]">
+                    <div className="flex items-center gap-0.5 text-emerald-600 font-bold text-[10px] md:text-xs">
                       <IconTrendingUp className="h-3.5 w-3.5" /> Active Client
                     </div>
                   </div>
-                  <span className="text-2xl font-extrabold text-text-primary mt-2 block">
+                  <span className="text-2xl md:text-3xl font-black text-text-primary mt-2 block">
                     ₹{(totalCollected + totalPending).toLocaleString("en-IN")}
                   </span>
-                  <p className="text-[10px] text-text-secondary mt-1">
+                  <p className="text-[10px] md:text-xs text-text-secondary mt-1">
                     Sum of collected funds and outstanding invoices
                   </p>
                 </div>
 
                 {/* Progress visual */}
                 <div className="space-y-1">
-                  <div className="flex justify-between text-xs font-semibold">
+                  <div className="flex justify-between text-xs md:text-sm font-semibold">
                     <span>Collected Ratio</span>
                     <span>
                       {totalCollected + totalPending > 0
@@ -546,7 +541,7 @@ export function ClientDetailClient({ client }: ClientDetailClientProps) {
                   </div>
                 </div>
 
-                <div className="pt-2 divide-y divide-border/60 text-xs">
+                <div className="pt-2 divide-y divide-border/60 text-xs md:text-sm">
                   <div className="py-2.5 flex justify-between">
                     <span className="text-text-secondary font-medium">Projects Done</span>
                     <span className="font-bold text-text-primary">
@@ -571,22 +566,22 @@ export function ClientDetailClient({ client }: ClientDetailClientProps) {
 
             {/* Client Notes list */}
             <div className="bg-surface-white border border-border rounded-xl p-6 shadow-sm">
-              <h3 className="text-sm font-bold text-text-primary mb-3">Client Notes</h3>
+              <h3 className="text-sm md:text-base font-bold text-text-primary mb-3">Client Notes</h3>
               {client.notes && client.notes.length > 0 ? (
                 <div className="space-y-3 max-h-60 overflow-y-auto divide-y divide-border/60">
                   {client.notes.map((note) => (
                     <div key={note.id} className="pt-3 first:pt-0">
-                      <p className="text-xs text-text-primary whitespace-pre-wrap font-medium">
+                      <p className="text-xs md:text-sm text-text-primary whitespace-pre-wrap font-medium">
                         {note.content}
                       </p>
-                      <span className="text-[9px] text-text-secondary mt-1 block">
+                      <span className="text-[9px] md:text-xs text-text-secondary mt-1 block">
                         {new Date(note.createdAt).toLocaleDateString("en-IN")}
                       </span>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-text-secondary italic">No notes added yet.</p>
+                <p className="text-xs md:text-sm text-text-secondary italic">No notes added yet.</p>
               )}
             </div>
           </div>
@@ -597,7 +592,7 @@ export function ClientDetailClient({ client }: ClientDetailClientProps) {
       {activeTab === "projects" && (
         <div className="animate-in fade-in duration-200">
           <div className="bg-surface-white border border-border rounded-xl p-6 shadow-sm">
-            <h3 className="text-sm font-bold text-text-primary flex items-center gap-2 mb-4">
+            <h3 className="text-sm md:text-base font-bold text-text-primary flex items-center gap-2 mb-4">
               <IconBriefcase className="h-5 w-5 text-brand-orange" /> Projects Ledger
             </h3>
 
@@ -610,17 +605,17 @@ export function ClientDetailClient({ client }: ClientDetailClientProps) {
                   >
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                       <div className="space-y-0.5">
-                        <span className="text-sm font-bold text-text-primary capitalize block">
+                        <span className="text-sm md:text-base font-bold text-text-primary capitalize block">
                           {project.name}
                         </span>
                         {project.techStack.length > 0 && (
-                          <span className="text-[10px] text-text-secondary block">
+                          <span className="text-[10px] md:text-xs text-text-secondary block">
                             Tech stack: {project.techStack.join(", ")}
                           </span>
                         )}
                       </div>
                       <span
-                        className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider self-start ${getStatusStyles(project.status)}`}
+                        className={`text-[9px] md:text-[10.5px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider self-start ${getStatusStyles(project.status)}`}
                       >
                         {project.status.toLowerCase()}
                       </span>
@@ -628,7 +623,7 @@ export function ClientDetailClient({ client }: ClientDetailClientProps) {
 
                     {/* Progress slider bar */}
                     <div className="mt-4 space-y-1">
-                      <div className="flex items-center justify-between text-[10px] font-semibold text-text-secondary">
+                      <div className="flex items-center justify-between text-[10px] md:text-xs font-semibold text-text-secondary">
                         <span>Milestone Progress</span>
                         <span>{project.progress}%</span>
                       </div>
@@ -641,7 +636,7 @@ export function ClientDetailClient({ client }: ClientDetailClientProps) {
                     </div>
 
                     {/* Footer values */}
-                    <div className="mt-4 pt-3 border-t border-border/40 flex flex-wrap gap-2 items-center justify-between text-[11px] text-text-secondary font-semibold">
+                    <div className="mt-4 pt-3 border-t border-border/40 flex flex-wrap gap-2 items-center justify-between text-[11px] md:text-xs text-text-secondary font-semibold">
                       <span>Budget: ₹{Number(project.budget).toLocaleString("en-IN")}</span>
                       <div className="flex gap-3">
                         {project.startDate && (
@@ -668,15 +663,15 @@ export function ClientDetailClient({ client }: ClientDetailClientProps) {
       {activeTab === "payments" && (
         <div className="animate-in fade-in duration-200">
           <div className="bg-surface-white border border-border rounded-xl p-6 shadow-sm">
-            <h3 className="text-sm font-bold text-text-primary flex items-center gap-2 mb-4">
+            <h3 className="text-sm md:text-base font-bold text-text-primary flex items-center gap-2 mb-4">
               <IconCreditCard className="h-5 w-5 text-emerald-600 dark:text-emerald-400" /> Payment Ledger
             </h3>
 
             {paymentsWithRunningPending.length > 0 ? (
               <div className="overflow-x-auto -mx-6 px-6">
-                <table className="w-full text-left text-xs border-collapse">
+                <table className="w-full text-left text-xs md:text-sm border-collapse">
                   <thead>
-                    <tr className="border-b border-border/60 text-text-secondary font-bold">
+                    <tr className="border-b border-border/60 text-text-secondary font-bold text-[10px] md:text-xs">
                       <th className="pb-3 font-semibold">Project Name</th>
                       <th className="pb-3 font-semibold">Method</th>
                       <th className="pb-3 font-semibold">Settled Date</th>
@@ -688,19 +683,19 @@ export function ClientDetailClient({ client }: ClientDetailClientProps) {
                   <tbody className="divide-y divide-border/40">
                     {paymentsWithRunningPending.map((pmt) => (
                       <tr key={pmt.id} className="text-text-primary">
-                        <td className="py-3 font-semibold capitalize">
+                        <td className="py-3 text-sm md:text-[15px] font-semibold capitalize">
                           {pmt.project?.name || "Client Level Payment"}
                         </td>
-                        <td className="py-3 uppercase text-[9px] tracking-wider font-bold">
+                        <td className="py-3 uppercase text-[9px] md:text-[10px] tracking-wider font-bold">
                           {pmt.method.replace("_", " ")}
                         </td>
-                        <td className="py-3 text-text-secondary flex items-center gap-1.5">
+                        <td className="py-3 text-text-secondary flex items-center gap-1.5 text-xs md:text-sm">
                           <IconCalendar className="h-3.5 w-3.5 text-text-secondary/65" />
                           {new Date(pmt.paidAt).toLocaleDateString("en-IN")}
                         </td>
                         <td className="py-3">
                           <span
-                            className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                            className={`text-[9px] md:text-[11px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider ${
                               pmt.status === "COMPLETED"
                                 ? "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400"
                                 : "bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400"
@@ -709,11 +704,11 @@ export function ClientDetailClient({ client }: ClientDetailClientProps) {
                             {pmt.status.toLowerCase()}
                           </span>
                         </td>
-                        <td className="py-3 text-right font-semibold text-text-secondary">
+                        <td className="py-3 text-right font-semibold text-text-secondary text-sm md:text-base">
                           ₹{pmt.runningPending.toLocaleString("en-IN")}
                         </td>
                         <td
-                          className={`py-3 text-right font-bold ${
+                          className={`py-3 text-right font-bold text-sm md:text-base ${
                             pmt.status === "COMPLETED"
                               ? "text-emerald-600 dark:text-emerald-400"
                               : "text-amber-600 dark:text-amber-400"
@@ -742,12 +737,12 @@ export function ClientDetailClient({ client }: ClientDetailClientProps) {
             <div className="mx-auto w-14 h-14 rounded-2xl bg-brand-orange/10 flex items-center justify-center mb-4">
               <IconFileText className="h-7 w-7 text-brand-orange" />
             </div>
-            <h3 className="text-base font-bold text-text-primary mb-1.5">Documents</h3>
-            <p className="text-xs text-text-secondary max-w-sm mx-auto leading-relaxed">
+            <h3 className="text-base md:text-lg font-bold text-text-primary mb-1.5">Documents</h3>
+            <p className="text-xs md:text-sm text-text-secondary max-w-sm mx-auto leading-relaxed">
               Proposals, agreements, invoices, and quotations for this client will appear here. This module is coming soon.
             </p>
             <div className="mt-5">
-              <span className="text-[10px] font-extrabold bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 px-3 py-1 rounded-full uppercase tracking-wider">
+              <span className="text-[10px] md:text-xs font-extrabold bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 px-3 py-1 rounded-full uppercase tracking-wider">
                 Coming Soon
               </span>
             </div>
@@ -759,7 +754,7 @@ export function ClientDetailClient({ client }: ClientDetailClientProps) {
       {activeTab === "activity" && (
         <div className="animate-in fade-in duration-200">
           <div className="bg-surface-white border border-border rounded-xl p-6 shadow-sm">
-            <h3 className="text-sm font-bold text-text-primary flex items-center gap-2 mb-6">
+            <h3 className="text-sm md:text-base font-bold text-text-primary flex items-center gap-2 mb-6">
               <IconActivity className="h-5 w-5 text-brand-orange" /> Project Activity Timeline
             </h3>
 
@@ -788,13 +783,13 @@ export function ClientDetailClient({ client }: ClientDetailClientProps) {
 
                       {/* Header row */}
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
-                        <span className="text-xs font-bold text-text-primary capitalize">
+                        <span className="text-xs md:text-sm font-bold text-text-primary capitalize">
                           {act.projectName} &middot;{" "}
                           <span className="text-text-secondary font-semibold">
                             {act.action.replace(/_/g, " ")}
                           </span>
                         </span>
-                        <span className="text-[10px] text-text-secondary font-medium">
+                        <span className="text-[10px] md:text-xs text-text-secondary font-medium">
                           {new Date(act.createdAt).toLocaleString("en-IN", {
                             dateStyle: "medium",
                             timeStyle: "short",
@@ -804,7 +799,7 @@ export function ClientDetailClient({ client }: ClientDetailClientProps) {
 
                       {/* Detail text */}
                       {act.detail && (
-                        <p className="text-xs text-text-secondary font-medium leading-relaxed max-w-2xl whitespace-pre-wrap">
+                        <p className="text-xs md:text-sm text-text-secondary font-medium leading-relaxed max-w-2xl whitespace-pre-wrap">
                           {act.detail}
                         </p>
                       )}

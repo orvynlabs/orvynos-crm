@@ -14,7 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { signOutAction } from "@/lib/actions/auth";
+import { signOut } from "next-auth/react";
 
 type TopbarProps = {
   user: { name?: string | null; email?: string | null; image?: string | null };
@@ -78,7 +78,7 @@ export function Topbar({ user }: TopbarProps) {
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              onSelect={() => signOutAction()}
+              onSelect={() => signOut({ redirectTo: "/login" })}
               className="text-danger focus:text-danger cursor-pointer"
             >
               <IconLogout className="h-4 w-4" stroke={1.75} />

@@ -69,7 +69,7 @@ export default async function DashboardPage() {
     <div className="space-y-8 font-sans">
       {/* Welcome header */}
       <div className="flex flex-col gap-1.5">
-        <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-text-primary">
+        <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight text-text-primary">
           Welcome back, {session.user.name?.split(" ")[0] || "Owner"}
         </h1>
         <p className="text-sm text-text-secondary">
@@ -78,42 +78,42 @@ export default async function DashboardPage() {
       </div>
 
       {/* METRICS ROW */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Revenue (Contracted) */}
-        <div className="bg-surface-white border border-border rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow duration-200">
+        <div className="bg-surface-white border border-border rounded-xl p-4 md:p-5 shadow-sm hover:shadow-md transition-shadow duration-200">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">
+            <span className="text-[10px] md:text-xs font-bold text-text-secondary uppercase tracking-wider">
               Revenue (Contracted)
             </span>
-            <div className="p-2 bg-brand-orange-tint text-brand-orange rounded-lg">
-              <IconCreditCard className="h-5 w-5" stroke={1.75} />
+            <div className="p-1.5 md:p-2 bg-brand-orange-tint text-brand-orange rounded-lg">
+              <IconCreditCard className="h-4.5 w-4.5 md:h-5 md:w-5" stroke={1.75} />
             </div>
           </div>
-          <div className="mt-4">
-            <span className="text-2xl font-extrabold text-text-primary tracking-tight">
+          <div className="mt-3 md:mt-4">
+            <span className="text-xl md:text-3xl font-black text-text-primary tracking-tight">
               ₹{totalContractedRevenue.toLocaleString("en-IN")}
             </span>
-            <p className="text-[10px] text-text-secondary font-medium mt-1">
+            <p className="text-[9px] md:text-[10px] text-text-secondary font-medium mt-1">
               Total pipeline value under contract
             </p>
           </div>
         </div>
 
         {/* Received */}
-        <div className="bg-surface-white border border-border rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow duration-200">
+        <div className="bg-surface-white border border-border rounded-xl p-4 md:p-5 shadow-sm hover:shadow-md transition-shadow duration-200">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">
+            <span className="text-[10px] md:text-xs font-bold text-text-secondary uppercase tracking-wider">
               Payments Collected
             </span>
-            <div className="p-2 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 rounded-lg">
-              <IconTrendingUp className="h-5 w-5" stroke={1.75} />
+            <div className="p-1.5 md:p-2 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 rounded-lg">
+              <IconTrendingUp className="h-4.5 w-4.5 md:h-5 md:w-5" stroke={1.75} />
             </div>
           </div>
-          <div className="mt-4">
-            <span className="text-2xl font-extrabold text-text-primary tracking-tight">
+          <div className="mt-3 md:mt-4">
+            <span className="text-xl md:text-3xl font-black text-text-primary tracking-tight">
               ₹{totalReceived.toLocaleString("en-IN")}
             </span>
-            <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-0.5 mt-1">
+            <p className="text-[9px] md:text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-0.5 mt-1">
               <IconArrowUpRight className="h-3.5 w-3.5" />
               100% cleared funds
             </p>
@@ -121,20 +121,20 @@ export default async function DashboardPage() {
         </div>
 
         {/* Expenses */}
-        <div className="bg-surface-white border border-border rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow duration-200">
+        <div className="bg-surface-white border border-border rounded-xl p-4 md:p-5 shadow-sm hover:shadow-md transition-shadow duration-200">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">
+            <span className="text-[10px] md:text-xs font-bold text-text-secondary uppercase tracking-wider">
               Total Expenses
             </span>
-            <div className="p-2 bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 rounded-lg">
-              <IconReceipt2 className="h-5 w-5" stroke={1.75} />
+            <div className="p-1.5 md:p-2 bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 rounded-lg">
+              <IconReceipt2 className="h-4.5 w-4.5 md:h-5 md:w-5" stroke={1.75} />
             </div>
           </div>
-          <div className="mt-4">
-            <span className="text-2xl font-extrabold text-text-primary tracking-tight">
+          <div className="mt-3 md:mt-4">
+            <span className="text-xl md:text-3xl font-black text-text-primary tracking-tight">
               ₹{totalExpenses.toLocaleString("en-IN")}
             </span>
-            <p className="text-[10px] text-rose-600 dark:text-rose-400 font-bold flex items-center gap-0.5 mt-1">
+            <p className="text-[9px] md:text-[10px] text-rose-600 dark:text-rose-400 font-bold flex items-center gap-0.5 mt-1">
               <IconArrowDownRight className="h-3.5 w-3.5" />
               Payouts, software, & hostings
             </p>
@@ -142,20 +142,20 @@ export default async function DashboardPage() {
         </div>
 
         {/* Profit */}
-        <div className="bg-surface-white border border-border rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow duration-200">
+        <div className="bg-surface-white border border-border rounded-xl p-4 md:p-5 shadow-sm hover:shadow-md transition-shadow duration-200">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">
+            <span className="text-[10px] md:text-xs font-bold text-text-secondary uppercase tracking-wider">
               Net Profit
             </span>
-            <div className="p-2 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 rounded-lg">
-              <IconTrendingUp className="h-5 w-5" stroke={1.75} />
+            <div className="p-1.5 md:p-2 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 rounded-lg">
+              <IconTrendingUp className="h-4.5 w-4.5 md:h-5 md:w-5" stroke={1.75} />
             </div>
           </div>
-          <div className="mt-4">
-            <span className="text-2xl font-extrabold text-text-primary tracking-tight">
+          <div className="mt-3 md:mt-4">
+            <span className="text-xl md:text-3xl font-black text-text-primary tracking-tight">
               ₹{netProfit.toLocaleString("en-IN")}
             </span>
-            <p className="text-[10px] text-text-secondary font-medium mt-1">
+            <p className="text-[9px] md:text-[10px] text-text-secondary font-medium mt-1">
               Collected revenue minus expenses
             </p>
           </div>
@@ -314,10 +314,43 @@ export default async function DashboardPage() {
           </button>
         </div>
 
-        <div className="overflow-x-auto -mx-6 px-6">
-          <table className="w-full text-left text-xs border-collapse">
+        {/* Mobile-Friendly Card List View (hidden on desktop) */}
+        <div className="block md:hidden space-y-3">
+          {recentPayments.length > 0 ? (
+            recentPayments.map((pmt) => (
+              <div key={pmt.id} className="border border-border/70 rounded-lg p-3.5 bg-surface-page/50 space-y-2">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <span className="font-bold text-text-primary block text-sm">{pmt.client.name}</span>
+                    <span className="text-xs text-text-secondary font-semibold">{pmt.project.name}</span>
+                  </div>
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400 text-sm">
+                    +₹{Number(pmt.amount).toLocaleString("en-IN")}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-[10px] text-text-secondary pt-1.5 border-t border-border/40">
+                  <div className="flex items-center gap-1">
+                    <IconCalendar className="h-3.5 w-3.5" />
+                    <span>{new Date(pmt.paidAt).toLocaleDateString("en-IN")}</span>
+                  </div>
+                  <span className="bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full font-bold uppercase text-[9px] tracking-wider">
+                    {pmt.method.replace("_", " ")}
+                  </span>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="py-6 text-center text-text-secondary text-xs flex items-center justify-center gap-1.5 border border-dashed border-border rounded-lg">
+              <IconAlertCircle className="h-4 w-4" /> No payments recorded.
+            </div>
+          )}
+        </div>
+
+        {/* Desktop Table View (hidden on mobile) */}
+        <div className="hidden md:block overflow-x-auto -mx-6 px-6">
+          <table className="w-full text-left text-xs md:text-sm border-collapse">
             <thead>
-              <tr className="border-b border-border/60 text-text-secondary font-bold">
+              <tr className="border-b border-border/60 text-text-secondary font-bold text-[10px] md:text-xs">
                 <th className="pb-3 font-semibold">Client Company</th>
                 <th className="pb-3 font-semibold hidden sm:table-cell">Project Code</th>
                 <th className="pb-3 font-semibold hidden md:table-cell">Method</th>
@@ -329,20 +362,20 @@ export default async function DashboardPage() {
               {recentPayments.length > 0 ? (
                 recentPayments.map((pmt) => (
                   <tr key={pmt.id} className="text-text-primary hover:bg-surface-page/50 transition-colors">
-                    <td className="py-3 font-semibold">{pmt.client.name}</td>
-                    <td className="py-3 text-text-secondary font-mono hidden sm:table-cell">{pmt.project.name}</td>
+                    <td className="py-3 font-semibold text-sm md:text-[14.5px]">{pmt.client.name}</td>
+                    <td className="py-3 text-text-secondary font-mono hidden sm:table-cell text-sm md:text-[14px]">{pmt.project.name}</td>
                     <td className="py-3 hidden md:table-cell">
                       <span className="bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full font-bold uppercase text-[9px] tracking-wider">
                         {pmt.method.replace("_", " ")}
                       </span>
                     </td>
-                    <td className="py-3 text-text-secondary">
+                    <td className="py-3 text-text-secondary text-xs md:text-sm">
                       <div className="flex items-center gap-1.5">
                         <IconCalendar className="h-3.5 w-3.5 text-text-secondary/65" />
                         {new Date(pmt.paidAt).toLocaleDateString("en-IN")}
                       </div>
                     </td>
-                    <td className="py-3 text-right font-bold text-emerald-600 dark:text-emerald-400">
+                    <td className="py-3 text-right font-bold text-emerald-600 dark:text-emerald-400 text-sm md:text-base">
                       +₹{Number(pmt.amount).toLocaleString("en-IN")}
                     </td>
                   </tr>

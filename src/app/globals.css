@@ -217,3 +217,35 @@ body {
     @apply font-sans;
   }
 }
+
+@media print {
+  aside,
+  header,
+  nav,
+  .no-print,
+  button,
+  select,
+  input,
+  [role="dialog"] {
+    display: none !important;
+  }
+
+  .md\:pl-60 {
+    padding-left: 0 !important;
+  }
+
+  body {
+    background-color: white !important;
+    color: black !important;
+  }
+
+  main {
+    padding: 0 !important;
+  }
+
+  /* Ensure card borders, backgrounds, and texts print perfectly */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}

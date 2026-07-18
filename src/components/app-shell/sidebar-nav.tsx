@@ -1,27 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { useTransition, useCallback } from "react";
+import { usePathname } from "next/navigation";
 import { NAV_ITEMS } from "./nav-items";
 import { cn } from "@/lib/utils";
 
 /** Shared nav list — used by the desktop sidebar and the mobile drawer. */
 export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
-
-  const handleClick = useCallback(
-    (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
-      e.preventDefault();
-      onNavigate?.();
-      startTransition(() => {
-        router.push(href);
-      });
-    },
-    [router, onNavigate]
-  );
 
   return (
     <nav className="flex flex-col gap-1 px-3">
@@ -33,13 +19,12 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
             key={item.href}
             href={item.href}
             prefetch={true}
-            onClick={(e) => handleClick(e, item.href)}
+            onClick={() => onNavigate?.()}
             className={cn(
-              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150 active:scale-[0.98]",
               active
                 ? "bg-brand-orange-tint text-brand-orange"
-                : "text-text-secondary hover:bg-surface-page hover:text-text-primary",
-              isPending && "opacity-70 pointer-events-none"
+                : "text-text-secondary hover:bg-surface-page hover:text-text-primary"
             )}
           >
             <item.icon className="h-5 w-5 shrink-0" stroke={1.75} />
@@ -50,4 +35,3 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
     </nav>
   );
 }
-

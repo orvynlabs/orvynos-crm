@@ -33,6 +33,8 @@ export default async function ProjectDetailPage({
             paidAt: true,
             reference: true,
             notes: true,
+            receiptNumber: true,
+            receiptKey: true,
           },
         },
         members: {
