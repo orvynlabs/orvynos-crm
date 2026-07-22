@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/db";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 export type ProjectInput = {
   name: string;
@@ -12,6 +12,7 @@ export type ProjectInput = {
   progress?: number;
   startDate?: string;
   deadline?: string;
+  completedAt?: string;
   techStack?: string[];
   domain?: string;
   domainExpiry?: string;
@@ -51,6 +52,7 @@ export async function createProject(data: ProjectInput) {
           budget: data.budget,
           startDate: data.startDate ? new Date(data.startDate) : null,
           deadline: data.deadline ? new Date(data.deadline) : null,
+          completedAt: data.completedAt ? new Date(data.completedAt) : data.status === "COMPLETED" ? new Date() : null,
           progress: data.progress || 0,
           techStack: data.techStack || [],
         },
@@ -79,6 +81,9 @@ export async function createProject(data: ProjectInput) {
 
     revalidatePath("/clients");
     revalidatePath("/projects");
+    revalidateTag("projects");
+    revalidateTag("clients");
+    revalidateTag("dashboard-metrics");
     return { success: true };
   } catch (error) {
     console.error("Failed to create project:", error);
@@ -131,7 +136,8 @@ export async function updateProject(id: string, data: ProjectInput) {
           budget: data.budget,
           startDate: data.startDate ? new Date(data.startDate) : null,
           deadline: data.deadline ? new Date(data.deadline) : null,
-          progress: data.progress ?? 0,
+          completedAt: data.completedAt ? new Date(data.completedAt) : data.status === "COMPLETED" ? new Date() : null,
+          progress: data.progress ?? (data.status === "COMPLETED" ? 100 : 0),
           techStack: data.techStack || [],
         },
       });
@@ -193,15 +199,21 @@ export async function updateProjectStatus(
 
     const current = await prisma.project.findUnique({
       where: { id },
-      select: { status: true },
+      select: { status: true, completedAt: true },
     });
 
     if (!current) throw new Error("Project not found");
 
+    const newCompletedAt = status === "COMPLETED" ? (current.completedAt || new Date()) : null;
+
     await prisma.$transaction(async (tx) => {
       await tx.project.update({
         where: { id },
-        data: { status },
+        data: { 
+          status,
+          completedAt: newCompletedAt,
+          ...(status === "COMPLETED" && { progress: 100 }),
+        },
       });
 
       if (current.status !== status) {

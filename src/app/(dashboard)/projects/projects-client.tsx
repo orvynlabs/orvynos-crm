@@ -19,6 +19,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ProjectForm, type ProjectFormValues } from "@/components/projects/project-form";
 import { createProject, updateProject, updateProjectStatus } from "./actions";
+import { DeliveryBadge } from "@/components/projects/delivery-badge";
 import {
   Sheet,
   SheetContent,
@@ -60,6 +61,7 @@ type Project = {
   techStack: string[];
   startDate: string | null;
   deadline: string | null;
+  completedAt: string | null;
   createdAt: string;
   client: Client;
   payments: Payment[];
@@ -347,12 +349,12 @@ export function ProjectsClient({ initialProjects, clients, teamMembers }: Projec
     <div className="space-y-6 font-sans">
       {/* Top Header Row */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="space-y-1">
-          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-text-primary">
+        <div>
+          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-text-primary">
             Projects Registry
           </h1>
-          <p className="text-xs text-text-secondary font-medium">
-            Manage your client projects and budgets.
+          <p className="text-xs md:text-sm text-text-secondary mt-0.5 font-medium">
+            Manage client projects, timelines, and budgets.
           </p>
         </div>
 
@@ -511,7 +513,7 @@ export function ProjectsClient({ initialProjects, clients, teamMembers }: Projec
       {/* ============================================================ */}
       {/*  KANBAN BOARD                                                */}
       {/* ============================================================ */}
-      <div className="grid gap-5 md:grid-cols-3 lg:grid-cols-3 w-full pb-4 scrollbar-thin">
+      <div className="grid gap-3.5 md:grid-cols-3 lg:grid-cols-3 w-full pb-4 scrollbar-thin">
         {COLUMNS.map((col) => {
           const projectsInCol = groupedProjects[col.key];
           const isDragOver = activeDragOverColumn === col.key;
@@ -527,13 +529,13 @@ export function ProjectsClient({ initialProjects, clients, teamMembers }: Projec
               onDrop={(e) => handleDrop(e, col.key)}
               className={`
                 ${mobileDisplayClass}
-                flex-col gap-3.5 min-w-[260px] md:min-w-0 min-h-[480px] rounded-xl border border-border/80 bg-surface-white p-4 transition-all duration-200
+                flex-col gap-2.5 min-w-[240px] md:min-w-0 min-h-[400px] rounded-xl border border-border/80 bg-surface-white p-3 transition-all duration-200
                 ${isDragOver ? "border-brand-orange bg-brand-orange-tint/5 shadow-inner scale-[1.01]" : ""}
               `}
             >
               {/* Column Title and Counter Header (Bigger text size) */}
-              <div className="flex items-center justify-between pb-2.5 border-b border-border/60 select-none">
-                <span className="text-sm font-black text-text-primary uppercase tracking-wider flex items-center gap-2">
+              <div className="flex items-center justify-between pb-2 border-b border-border/60 select-none">
+                <span className="text-xs font-black text-text-primary uppercase tracking-wider flex items-center gap-1.5">
                   <span className={`w-2.5 h-2.5 rounded-full ${col.key === "NEW" ? "bg-slate-400" : col.key === "ONGOING" ? "bg-blue-500" : "bg-emerald-500"}`} />
                   {col.label}
                 </span>
@@ -556,7 +558,7 @@ export function ProjectsClient({ initialProjects, clients, teamMembers }: Projec
               </div>
 
               {/* Cards Container */}
-              <div className="flex-1 space-y-3.5 overflow-y-auto max-h-[550px] pr-1 py-1 scrollbar-hide">
+              <div className="flex-1 space-y-2.5 overflow-y-auto max-h-[480px] pr-1 py-1 scrollbar-hide">
                 {projectsInCol.length > 0 ? (
                   projectsInCol.map((project) => {
                     const { paid, pending } = getProjectFinances(project);
@@ -574,7 +576,7 @@ export function ProjectsClient({ initialProjects, clients, teamMembers }: Projec
                           }
                           router.push(`/projects/${project.id}`);
                         }}
-                        className="bg-surface-page/55 hover:bg-surface-page border border-border/70 rounded-xl p-4.5 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer relative group"
+                        className="bg-surface-page/55 hover:bg-surface-page border border-border/70 rounded-lg p-3.5 shadow-2xs hover:shadow-sm transition-all duration-200 cursor-pointer relative group"
                       >
                         {/* Title & Chevron Menu (Bigger text size) */}
                         <div className="flex justify-between items-start">
@@ -583,7 +585,7 @@ export function ProjectsClient({ initialProjects, clients, teamMembers }: Projec
                             draggable={false}
                             onClick={(e) => e.stopPropagation()}
                             onDragStart={(e) => e.stopPropagation()}
-                            className="font-black text-text-primary text-base hover:text-brand-orange transition-colors text-left capitalize tracking-tight leading-snug cursor-pointer flex-1"
+                            className="font-black text-text-primary text-sm hover:text-brand-orange transition-colors text-left capitalize tracking-tight leading-snug cursor-pointer flex-1"
                           >
                             {project.name}
                           </Link>
@@ -607,11 +609,14 @@ export function ProjectsClient({ initialProjects, clients, teamMembers }: Projec
                           </div>
                         </div>
 
-                        {/* Client details (Bigger text size) */}
-                        <p className="text-xs font-extrabold text-text-secondary capitalize mt-2 flex items-center gap-1.5 select-none">
-                          <IconUsers className="h-3.5 w-3.5 shrink-0 text-text-secondary/75" />
-                          {project.client.name}
-                        </p>
+                        {/* Client details & Delivery Badge */}
+                        <div className="mt-1.5 flex flex-wrap items-center justify-between gap-1 select-none">
+                          <p className="text-[11px] font-extrabold text-text-secondary capitalize flex items-center gap-1">
+                            <IconUsers className="h-3.5 w-3.5 shrink-0 text-text-secondary/75" />
+                            {project.client.name}
+                          </p>
+                          <DeliveryBadge deadline={project.deadline} completedAt={project.completedAt} status={project.status} size="sm" />
+                        </div>
 
                         {/* Column Switch Dropdown Menu (for mobile/touch support) */}
                         {showMoveMenuForId === project.id && (
@@ -635,20 +640,20 @@ export function ProjectsClient({ initialProjects, clients, teamMembers }: Projec
                         )}
 
                         {/* Budget progress ratio (Bigger text size) */}
-                        <div className="mt-4 pt-4 border-t border-border/40 space-y-2 select-none">
-                          <div className="flex justify-between items-center text-xs font-extrabold text-text-secondary">
+                        <div className="mt-3 pt-3 border-t border-border/40 space-y-1.5 select-none">
+                          <div className="flex justify-between items-center text-[11px] font-extrabold text-text-secondary">
                             <span>Budget Progress</span>
-                            <span className="text-text-primary font-black">₹{paid.toLocaleString("en-IN")} / ₹{Number(project.budget).toLocaleString("en-IN")}</span>
+                            <span className="text-text-primary font-black text-[11px]">₹{paid.toLocaleString("en-IN")} / ₹{Number(project.budget).toLocaleString("en-IN")}</span>
                           </div>
 
                           {/* Progress bar line */}
-                          <div className="w-full bg-border rounded-full h-2 overflow-hidden">
+                          <div className="w-full bg-border rounded-full h-1.5 overflow-hidden">
                             <div
                               className="bg-brand-orange h-full rounded-full transition-all duration-300"
                               style={{ width: `${progressPercent}%` }}
                             />
                           </div>
-                          <div className="flex items-center justify-between text-xs font-extrabold">
+                          <div className="flex items-center justify-between text-[10px] font-extrabold">
                             <span className="text-amber-600 dark:text-amber-400 font-bold">
                               Pending: ₹{pending.toLocaleString("en-IN")}
                             </span>
@@ -659,10 +664,10 @@ export function ProjectsClient({ initialProjects, clients, teamMembers }: Projec
                         </div>
 
                         {/* Card metadata footer (Bigger text size) */}
-                        <div className="mt-4.5 pt-3 border-t border-border/40 flex items-center justify-between text-xs font-extrabold text-text-secondary select-none">
+                        <div className="mt-3 pt-2.5 border-t border-border/40 flex items-center justify-between text-[10px] font-extrabold text-text-secondary select-none">
                           {/* Dates */}
-                          <div className="flex items-center gap-1.5 truncate max-w-[150px]">
-                            <IconCalendar className="h-4 w-4 shrink-0 text-text-secondary/70" />
+                          <div className="flex items-center gap-1 truncate max-w-[140px]">
+                            <IconCalendar className="h-3.5 w-3.5 shrink-0 text-text-secondary/70" />
                             {project.startDate || project.deadline ? (
                               <span className="truncate">
                                 {project.startDate ? new Date(project.startDate).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : "Start"}
@@ -675,8 +680,8 @@ export function ProjectsClient({ initialProjects, clients, teamMembers }: Projec
                           </div>
 
                           {/* Project Members count */}
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            <IconUsers className="h-4 w-4 shrink-0 text-text-secondary/70" />
+                          <div className="flex items-center gap-1 shrink-0">
+                            <IconUsers className="h-3.5 w-3.5 shrink-0 text-text-secondary/70" />
                             <span>{project.members ? project.members.length : 0} member{project.members && project.members.length === 1 ? "" : "s"}</span>
                           </div>
                         </div>

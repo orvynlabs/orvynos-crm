@@ -9,6 +9,9 @@ const mockPrisma: any = {
   expense: {
     aggregate: async () => ({ _sum: { amount: null } }),
   },
+  teamPayment: {
+    aggregate: async () => ({ _sum: { amount: null } }),
+  },
 };
 
 const mockPool: any = {

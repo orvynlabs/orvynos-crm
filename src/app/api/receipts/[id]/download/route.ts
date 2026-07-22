@@ -95,7 +95,7 @@ export async function GET(
     }
 
     console.log(`[Receipt Download] Generating PDF via direct Server Rendering for ID: ${id}`);
-    
+
     // Render the React Server Component directly to dynamic HTML markup
     const jsx = await ReceiptPrintPage({ params: Promise.resolve({ id }) });
     const { renderToString } = await import('react-dom/server');
@@ -109,7 +109,7 @@ export async function GET(
         const logoBase64 = `data:image/png;base64,${logoBuffer.toString('base64')}`;
         html = html.replaceAll('/brand/logo.png', logoBase64);
       }
-      
+
       const faviconPath = path.join(process.cwd(), 'public/brand/favicon-48.png');
       if (fs.existsSync(faviconPath)) {
         const faviconBuffer = fs.readFileSync(faviconPath);
@@ -154,7 +154,7 @@ export async function GET(
       })
       .then(() => console.log(`[Receipt Download] Cached to: ${storageKey}`))
       .catch((err) => console.error('[Receipt Download] Background cache failed:', err));
-    
+
     console.log({
       bufferLength: pdfBuffer.length,
       firstBytes: pdfBuffer.subarray(0, 20).toString("hex"),

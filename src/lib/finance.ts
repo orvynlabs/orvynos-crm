@@ -94,3 +94,32 @@ export async function getNetProfit(dateRange?: { start?: Date; end?: Date }): Pr
   const expenses = await getTotalExpenses(dateRange);
   return revenue - expenses;
 }
+
+export async function getTeamMemberTotalPaid(teamMemberId: string): Promise<number> {
+  const paymentsSum = await prisma.teamPayment.aggregate({
+    where: {
+      teamMemberId,
+      status: PaymentStatus.COMPLETED,
+    },
+    _sum: {
+      amount: true,
+    },
+  });
+
+  return Number(paymentsSum._sum.amount || 0);
+}
+
+export async function getTeamMemberPendingAmount(teamMemberId: string): Promise<number> {
+  const paymentsSum = await prisma.teamPayment.aggregate({
+    where: {
+      teamMemberId,
+      status: PaymentStatus.PENDING,
+    },
+    _sum: {
+      amount: true,
+    },
+  });
+
+  return Number(paymentsSum._sum.amount || 0);
+}
+

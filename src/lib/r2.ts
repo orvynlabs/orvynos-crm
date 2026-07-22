@@ -3,19 +3,22 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import fs from 'fs';
 import path from 'path';
 
+// Support both Backblaze B2 & Cloudflare R2 environment variable configurations
+const endpoint = process.env.B2_ENDPOINT || process.env.R2_ENDPOINT;
+const accessKeyId = process.env.B2_KEY_ID || process.env.B2_ACCESS_KEY_ID || process.env.R2_ACCESS_KEY_ID;
+const secretAccessKey = process.env.B2_APPLICATION_KEY || process.env.R2_SECRET_ACCESS_KEY;
+const bucketName = process.env.B2_BUCKET_NAME || process.env.R2_BUCKET_NAME || 'orvynos-crm';
 const accountId = process.env.R2_ACCOUNT_ID;
-const accessKeyId = process.env.R2_ACCESS_KEY_ID;
-const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
-const bucketName = process.env.R2_BUCKET_NAME || 'orvynos-crm';
-const s3Endpoint = process.env.R2_ENDPOINT; // Supports Backblaze B2 endpoints
+const region = process.env.B2_REGION || (endpoint ? 'us-west-004' : 'auto');
 
-const isR2Configured = !!(accountId && accessKeyId && secretAccessKey);
+export const isCloudStorageConfigured = !!(accessKeyId && secretAccessKey && (endpoint || accountId));
 
 let s3Client: S3Client | null = null;
-if (isR2Configured) {
+if (isCloudStorageConfigured) {
+  const finalEndpoint = endpoint || `https://${accountId}.r2.cloudflarestorage.com`;
   s3Client = new S3Client({
-    region: s3Endpoint ? (accountId || 'us-east-1') : 'auto',
-    endpoint: s3Endpoint || `https://${accountId}.r2.cloudflarestorage.com`,
+    region: region,
+    endpoint: finalEndpoint,
     credentials: {
       accessKeyId: accessKeyId!,
       secretAccessKey: secretAccessKey!,
@@ -33,7 +36,7 @@ export async function uploadToStorage(
   buffer: Buffer,
   mimeType: string
 ): Promise<string> {
-  if (isR2Configured && s3Client) {
+  if (isCloudStorageConfigured && s3Client) {
     const command = new PutObjectCommand({
       Bucket: bucketName,
       Key: key,
@@ -60,7 +63,7 @@ export async function uploadToStorage(
  * If not, returns a local relative server URL.
  */
 export async function getStorageUrl(key: string): Promise<string> {
-  if (isR2Configured && s3Client) {
+  if (isCloudStorageConfigured && s3Client) {
     const command = new GetObjectCommand({
       Bucket: bucketName,
       Key: key,
@@ -76,7 +79,7 @@ export async function getStorageUrl(key: string): Promise<string> {
  * Used to stream cached PDFs directly to the browser without a redirect.
  */
 export async function getFromStorage(key: string): Promise<Buffer> {
-  if (isR2Configured && s3Client) {
+  if (isCloudStorageConfigured && s3Client) {
     const command = new GetObjectCommand({
       Bucket: bucketName,
       Key: key,

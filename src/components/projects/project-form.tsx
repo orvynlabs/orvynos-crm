@@ -24,6 +24,7 @@ const projectSchema = z.object({
   progress: z.number().min(0).max(100),
   startDate: z.string().optional().or(z.literal("")),
   deadline: z.string().optional().or(z.literal("")),
+  completedAt: z.string().optional().or(z.literal("")),
   techStack: z.array(z.string()),
 });
 
@@ -351,8 +352,8 @@ export function ProjectForm({
         )}
       </div>
 
-      {/* 6. Start date and Target Deadline side-by-side */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {/* 6. Start date, Target Deadline, and Actual Delivery Date */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* Start Date */}
         <div className="space-y-1.5">
           <label className="text-[10px] font-extrabold text-text-primary uppercase tracking-wider flex items-center gap-1.5 select-none">
@@ -375,6 +376,19 @@ export function ProjectForm({
             type="date"
             disabled={isPending}
             {...register("deadline")}
+            className="flex h-9 w-full rounded-lg border border-border bg-surface-page px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-orange font-semibold cursor-pointer"
+          />
+        </div>
+
+        {/* Actual Delivery Date */}
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-extrabold text-text-primary uppercase tracking-wider flex items-center gap-1.5 select-none text-emerald-600 dark:text-emerald-400">
+            <IconCalendar className="h-3.5 w-3.5" /> Delivery Date
+          </label>
+          <input
+            type="date"
+            disabled={isPending}
+            {...register("completedAt")}
             className="flex h-9 w-full rounded-lg border border-border bg-surface-page px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-orange font-semibold cursor-pointer"
           />
         </div>

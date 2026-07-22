@@ -18,8 +18,11 @@ import {
   IconSearch,
   IconReceipt,
   IconCalendar,
+  IconBriefcase,
+  IconBuildingStore,
+  IconX,
 } from "@tabler/icons-react";
-import { ExpenseCategory } from "@/generated/prisma/client";
+import { ExpenseCategory } from "@/lib/enums";
 
 export type ExpenseRow = {
   id: string;
@@ -48,50 +51,42 @@ const getCategoryConfig = (category: ExpenseCategory) => {
   switch (category) {
     case ExpenseCategory.SOFTWARE:
       return {
-        badge: "bg-blue-50/60 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400 border border-blue-100/70 dark:border-blue-900/30",
-        border: "border-l-[4px] border-l-blue-500",
+        badge: "bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400 border border-blue-200/60 dark:border-blue-900/40",
         dot: "bg-blue-500",
       };
     case ExpenseCategory.HOSTING:
       return {
-        badge: "bg-violet-50/60 text-violet-600 dark:bg-violet-950/30 dark:text-violet-400 border border-violet-100/70 dark:border-violet-900/30",
-        border: "border-l-[4px] border-l-violet-500",
+        badge: "bg-violet-50 text-violet-600 dark:bg-violet-950/40 dark:text-violet-400 border border-violet-200/60 dark:border-violet-900/40",
         dot: "bg-violet-500",
       };
     case ExpenseCategory.DOMAINS:
       return {
-        badge: "bg-purple-50/60 text-purple-600 dark:bg-purple-950/30 dark:text-purple-400 border border-purple-100/70 dark:border-purple-900/30",
-        border: "border-l-[4px] border-l-purple-500",
+        badge: "bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-400 border border-purple-200/60 dark:border-purple-900/40",
         dot: "bg-purple-500",
       };
     case ExpenseCategory.MARKETING:
       return {
-        badge: "bg-amber-50/60 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400 border border-amber-100/70 dark:border-amber-900/30",
-        border: "border-l-[4px] border-l-amber-500",
+        badge: "bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-200/60 dark:border-amber-900/40",
         dot: "bg-amber-500",
       };
     case ExpenseCategory.OFFICE:
       return {
-        badge: "bg-rose-50/60 text-rose-600 dark:bg-rose-950/30 dark:text-rose-400 border border-rose-100/70 dark:border-rose-900/30",
-        border: "border-l-[4px] border-l-rose-500",
+        badge: "bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200/60 dark:border-rose-900/40",
         dot: "bg-rose-500",
       };
     case ExpenseCategory.TRAVEL:
       return {
-        badge: "bg-indigo-50/60 text-indigo-600 dark:bg-indigo-950/30 dark:text-indigo-400 border border-indigo-100/70 dark:border-indigo-900/30",
-        border: "border-l-[4px] border-l-indigo-500",
+        badge: "bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-900/40",
         dot: "bg-indigo-500",
       };
     case ExpenseCategory.TEAM_PAYMENTS:
       return {
-        badge: "bg-emerald-50/60 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-100/70 dark:border-emerald-900/30",
-        border: "border-l-[4px] border-l-emerald-500",
+        badge: "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-900/40",
         dot: "bg-emerald-500",
       };
     default:
       return {
-        badge: "bg-stone-50/60 text-stone-600 dark:bg-stone-900/30 dark:text-stone-400 border border-stone-150 dark:border-stone-800",
-        border: "border-l-[4px] border-l-stone-400",
+        badge: "bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-300 border border-stone-200 dark:border-stone-700",
         dot: "bg-stone-400",
       };
   }
@@ -141,7 +136,6 @@ export function ExpensesClient({
     });
   };
 
-  // Calculate dynamic totals based on project linkages
   const projectExpensesOnly = initialExpenses.filter((e) => e.projectId !== null);
   const businessExpensesOnly = initialExpenses.filter((e) => e.projectId === null);
 
@@ -169,32 +163,33 @@ export function ExpensesClient({
   });
 
   return (
-    <div className="space-y-6 text-left">
-      {/* Header section */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className="w-full max-w-full space-y-4 text-left font-sans overflow-x-hidden">
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div>
-          <h1 className="text-2xl md:text-4xl font-bold tracking-tight text-text-primary">Expenses Ledger</h1>
-          <p className="text-sm md:text-[15px] text-text-secondary mt-1 font-medium">
-            Keep track of where your agency's money is going. Filter, view, and document every cost.
+          <h1 className="text-lg md:text-xl font-bold tracking-tight text-text-primary">Expenses</h1>
+          <p className="text-[11px] text-text-secondary mt-0.5 font-medium">
+            Monitor agency expenditures and project-related outflows.
           </p>
         </div>
+
         <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
           <SheetTrigger
             render={
-              <Button className="font-bold text-xs bg-brand-orange hover:bg-brand-orange-hover text-white py-2.5 px-4 rounded-lg flex items-center gap-1.5 shadow-none border-0 min-h-[40px] cursor-pointer active:scale-[0.98] transition-all">
-                <IconPlus className="h-4 w-4" />
+              <Button className="font-bold text-xs bg-brand-orange hover:bg-brand-orange-hover text-white py-1.5 px-3.5 rounded-lg flex items-center gap-1.5 shadow-2xs border-0 h-8 cursor-pointer active:scale-[0.98] transition-all">
+                <IconPlus className="h-3.5 w-3.5" />
                 Log Expense
               </Button>
             }
           />
-          <SheetContent className="w-full sm:max-w-[450px] p-6 bg-surface-white border-l border-border h-full flex flex-col justify-between overflow-y-auto">
+          <SheetContent className="w-full sm:max-w-[420px] p-5 bg-surface-white border-l border-border h-full flex flex-col justify-between overflow-y-auto">
             <div>
-              <SheetHeader className="mb-6">
-                <SheetTitle className="text-lg font-bold text-text-primary text-left">
+              <SheetHeader className="mb-4">
+                <SheetTitle className="text-base font-bold text-text-primary text-left">
                   Log Business Expense
                 </SheetTitle>
-                <SheetDescription className="text-xs text-text-secondary mt-1 text-left">
-                  Log operational costs or project-specific expenditures.
+                <SheetDescription className="text-xs text-text-secondary mt-0.5 text-left">
+                  Record operational costs or project expenditures.
                 </SheetDescription>
               </SheetHeader>
               <ExpenseForm
@@ -209,316 +204,319 @@ export function ExpensesClient({
         </Sheet>
       </div>
 
-      {/* Metrics Summary Area with Simple English Explanations */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Metric 1: Total Outflows */}
-        <div className="p-5 bg-surface-white border border-border rounded-xl flex flex-col justify-between shadow-sm hover:shadow-md transition-shadow duration-200">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-lg flex items-center justify-center shrink-0 border border-rose-100 shadow-sm">
-              <IconReceipt className="h-6 w-6" stroke={2} />
+      {/* Responsive Metrics Summary Cards */}
+      <div className="flex overflow-x-auto sm:grid sm:grid-cols-3 gap-2.5 pb-0.5 snap-x scrollbar-none max-w-full">
+        {/* Metric 1: Total Money Spent */}
+        <div className="min-w-[220px] sm:min-w-0 flex-1 shrink-0 sm:shrink snap-start p-3 sm:p-3.5 bg-surface-white border border-border rounded-xl flex flex-col justify-between shadow-2xs">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 bg-rose-50 dark:bg-rose-950/30 text-rose-600 rounded-lg flex items-center justify-center shrink-0 border border-rose-100 dark:border-rose-900/30">
+                <IconReceipt className="h-4 w-4" stroke={2} />
+              </div>
+              <div>
+                <span className="text-[10px] sm:text-[11px] font-bold uppercase text-text-secondary tracking-wider block">
+                  Total Money Spent
+                </span>
+                <span className="text-base sm:text-lg md:text-xl font-black text-stone-900 dark:text-stone-100 leading-tight">
+                  {formatCurrency(metrics.totalExpenses)}
+                </span>
+              </div>
             </div>
-            <div>
-              <span className="text-[10px] md:text-[12px] font-extrabold uppercase text-text-secondary tracking-wider block">
-                Total Outflows
-              </span>
-              <span className="text-2xl md:text-3xl font-black text-stone-900 mt-1 block">
-                {formatCurrency(metrics.totalExpenses)}
-              </span>
-            </div>
+            <span className="text-[10px] font-semibold text-text-secondary bg-stone-100 dark:bg-stone-800 px-2 py-0.5 rounded-md">
+              {initialExpenses.length} entries
+            </span>
           </div>
-          <div className="mt-3 pt-3 border-t border-border/60">
-            <p className="text-[11px] md:text-xs text-stone-400 font-medium leading-relaxed">
-              <strong>All Money Spent:</strong> The complete sum of all money paid out by your agency, combining both project work and general overhead costs.
-            </p>
-          </div>
+          <p className="text-[10px] text-text-secondary font-medium mt-1.5 pt-1.5 border-t border-border/40">
+            Total of all agency &amp; project expenses combined.
+          </p>
         </div>
 
-        {/* Metric 2: Project Work Costs */}
-        <div className="p-5 bg-surface-white border border-border rounded-xl flex flex-col justify-between shadow-sm hover:shadow-md transition-shadow duration-200">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-lg flex items-center justify-center shrink-0 border border-emerald-100 shadow-sm">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" fill="none" strokeLinecap="round" strokeLinejoin="round">
-                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                <path d="M5 19l2.757 -7.351a1 1 0 0 1 .936 -.649h12.307a1 1 0 0 1 .986 1.164l-.996 5.211a2 2 0 0 1 -1.972 1.625h-12.022a2 2 0 0 1 -2 -2z" />
-                <path d="M5 14v-6a2 2 0 0 1 2 -2h3.586a1 1 0 0 1 .707 .293l2.414 2.414a1 1 0 0 0 .707 .293h3.586a2 2 0 0 1 2 2v2" />
-              </svg>
+        {/* Metric 2: Client Project Costs */}
+        <div className="min-w-[220px] sm:min-w-0 flex-1 shrink-0 sm:shrink snap-start p-3 sm:p-3.5 bg-surface-white border border-border rounded-xl flex flex-col justify-between shadow-2xs">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 rounded-lg flex items-center justify-center shrink-0 border border-emerald-100 dark:border-emerald-900/30">
+                <IconBriefcase className="h-4 w-4" stroke={2} />
+              </div>
+              <div>
+                <span className="text-[10px] sm:text-[11px] font-bold uppercase text-text-secondary tracking-wider block">
+                  Client Project Costs
+                </span>
+                <span className="text-base sm:text-lg md:text-xl font-black text-stone-900 dark:text-stone-100 leading-tight">
+                  {formatCurrency(totalProjectOutflows)}
+                </span>
+              </div>
             </div>
-            <div>
-              <span className="text-[10px] md:text-[12px] font-extrabold uppercase text-text-secondary tracking-wider block">
-                Project Expenses
-              </span>
-              <span className="text-2xl md:text-3xl font-black text-stone-900 mt-1 block">
-                {formatCurrency(totalProjectOutflows)}
-              </span>
-            </div>
+            <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-md border border-emerald-200/50">
+              {projectExpensesOnly.length} linked
+            </span>
           </div>
-          <div className="mt-3 pt-3 border-t border-border/60">
-            <p className="text-[11px] md:text-xs text-stone-400 font-medium leading-relaxed">
-              <strong>Client Work Costs:</strong> Expenses linked directly to specific projects, such as subcontractor payments, design assets, or custom APIs.
-            </p>
-          </div>
+          <p className="text-[10px] text-text-secondary font-medium mt-1.5 pt-1.5 border-t border-border/40">
+            Costs directly assigned to build client projects.
+          </p>
         </div>
 
-        {/* Metric 3: Business Overhead Costs */}
-        <div className="p-5 bg-surface-white border border-border rounded-xl flex flex-col justify-between shadow-sm hover:shadow-md transition-shadow duration-200">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center shrink-0 border border-blue-100 shadow-sm">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" fill="none" strokeLinecap="round" strokeLinejoin="round">
-                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                <path d="M3 21l18 0" />
-                <path d="M9 21v-10a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v10" />
-                <path d="M3 3l18 0" />
-                <path d="M5 3v18" />
-                <path d="M19 3v18" />
-                <path d="M9 7l6 0" />
-                <path d="M9 13l6 0" />
-              </svg>
+        {/* Metric 3: Company Expenses */}
+        <div className="min-w-[220px] sm:min-w-0 flex-1 shrink-0 sm:shrink snap-start p-3 sm:p-3.5 bg-surface-white border border-border rounded-xl flex flex-col justify-between shadow-2xs">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 bg-blue-50 dark:bg-blue-950/30 text-blue-600 rounded-lg flex items-center justify-center shrink-0 border border-blue-100 dark:border-blue-900/30">
+                <IconBuildingStore className="h-4 w-4" stroke={2} />
+              </div>
+              <div>
+                <span className="text-[10px] sm:text-[11px] font-bold uppercase text-text-secondary tracking-wider block">
+                  Company Expenses
+                </span>
+                <span className="text-base sm:text-lg md:text-xl font-black text-stone-900 dark:text-stone-100 leading-tight">
+                  {formatCurrency(totalBusinessOutflows)}
+                </span>
+              </div>
             </div>
-            <div>
-              <span className="text-[10px] md:text-[12px] font-extrabold uppercase text-text-secondary tracking-wider block">
-                Business Overhead
-              </span>
-              <span className="text-2xl md:text-3xl font-black text-stone-900 mt-1 block">
-                {formatCurrency(totalBusinessOutflows)}
-              </span>
-            </div>
+            <span className="text-[10px] font-semibold text-blue-700 bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded-md border border-blue-200/50">
+              {businessExpensesOnly.length} company
+            </span>
           </div>
-          <div className="mt-3 pt-3 border-t border-border/60">
-            <p className="text-[11px] md:text-xs text-stone-400 font-medium leading-relaxed">
-              <strong>Overhead Costs:</strong> General operational costs required to run the agency itself, like server hosting, domain names, general marketing, and software.
-            </p>
-          </div>
+          <p className="text-[10px] text-text-secondary font-medium mt-1.5 pt-1.5 border-t border-border/40">
+            Software, tools, domains, travel, food &amp; team costs.
+          </p>
         </div>
       </div>
 
-      {/* Tabs and Switchers - Redesigned Segmented Control Style */}
-      <div className="space-y-4">
-        <div className="bg-stone-100/80 p-1.5 rounded-xl flex w-full md:w-max gap-1 select-none">
-          <button
-            onClick={() => setActiveTab("ALL")}
-            className={`flex-1 md:flex-none px-5 py-2 font-bold text-xs md:text-sm rounded-lg cursor-pointer transition-all duration-200 whitespace-nowrap min-h-[36px] flex items-center justify-center gap-1.5 ${
-              activeTab === "ALL"
-                ? "bg-white text-brand-orange shadow-sm"
-                : "text-text-secondary hover:text-text-primary"
-            }`}
-          >
-            All Expenses ({initialExpenses.length})
-          </button>
-          <button
-            onClick={() => setActiveTab("PROJECT")}
-            className={`flex-1 md:flex-none px-5 py-2 font-bold text-xs md:text-sm rounded-lg cursor-pointer transition-all duration-200 whitespace-nowrap min-h-[36px] flex items-center justify-center gap-1.5 ${
-              activeTab === "PROJECT"
-                ? "bg-white text-brand-orange shadow-sm"
-                : "text-text-secondary hover:text-text-primary"
-            }`}
-          >
-            Project Expenses ({projectExpensesOnly.length})
-          </button>
-          <button
-            onClick={() => setActiveTab("BUSINESS")}
-            className={`flex-1 md:flex-none px-5 py-2 font-bold text-xs md:text-sm rounded-lg cursor-pointer transition-all duration-200 whitespace-nowrap min-h-[36px] flex items-center justify-center gap-1.5 ${
-              activeTab === "BUSINESS"
-                ? "bg-white text-brand-orange shadow-sm"
-                : "text-text-secondary hover:text-text-primary"
-            }`}
-          >
-            Business Overhead ({businessExpensesOnly.length})
-          </button>
-        </div>
-
-        {/* Lightweight Section Introduction Header in Simple English */}
-        <div className="p-4 bg-stone-50 border border-border/80 rounded-xl shadow-inner-sm">
-          {activeTab === "ALL" && (
-            <p className="text-xs md:text-sm text-text-secondary font-medium leading-relaxed">
-              💡 <strong>Overview:</strong> This ledger shows all expenses combined. Use the search bar below or change the tabs to view costs by specific category.
-            </p>
-          )}
-          {activeTab === "PROJECT" && (
-            <p className="text-xs md:text-sm text-text-secondary font-medium leading-relaxed">
-              💡 <strong>Project Expenses:</strong> These are direct operational costs assigned to build client projects. Tracking this helps calculate your real project margins.
-            </p>
-          )}
-          {activeTab === "BUSINESS" && (
-            <p className="text-xs md:text-sm text-text-secondary font-medium leading-relaxed">
-              💡 <strong>Business Overhead:</strong> These are the base expenses needed to keep Orvyn Labs running. This includes software, domain subscriptions, server fees, and office supplies.
-            </p>
-          )}
-        </div>
-
-        {/* Filter controls */}
-        <div className="flex flex-col md:flex-row gap-3">
-          <div className="relative flex-1">
-            <IconSearch className="absolute left-3 top-2.5 h-4 w-4 text-text-secondary" />
-            <input
-              type="text"
-              placeholder="Search expenses by title or project..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="flex h-9 w-full rounded-lg border border-border bg-surface-white pl-9 pr-3 py-1 text-sm md:text-[15px] shadow-sm transition-all placeholder:text-text-secondary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-orange font-semibold"
-            />
+      {/* Control Toolbar: Tabs, Search, Category, Date */}
+      <div className="p-3 bg-surface-white border border-border rounded-xl space-y-2.5 shadow-2xs max-w-full">
+        <div className="flex flex-col lg:flex-row gap-2.5 items-stretch lg:items-center justify-between">
+          {/* Segmented Tab Controls */}
+          <div className="bg-surface-page p-1 rounded-lg flex gap-1 select-none overflow-x-auto scrollbar-none w-full lg:w-auto shrink-0 border border-border/60">
+            <button
+              onClick={() => setActiveTab("ALL")}
+              className={`flex-1 lg:flex-none px-3 py-1 font-extrabold text-[11px] rounded-md cursor-pointer transition-all whitespace-nowrap ${
+                activeTab === "ALL"
+                  ? "bg-surface-white text-brand-orange shadow-2xs"
+                  : "text-text-secondary hover:text-text-primary"
+              }`}
+            >
+              All ({initialExpenses.length})
+            </button>
+            <button
+              onClick={() => setActiveTab("PROJECT")}
+              className={`flex-1 lg:flex-none px-3 py-1 font-extrabold text-[11px] rounded-md cursor-pointer transition-all whitespace-nowrap ${
+                activeTab === "PROJECT"
+                  ? "bg-surface-white text-brand-orange shadow-2xs"
+                  : "text-text-secondary hover:text-text-primary"
+              }`}
+            >
+              Project ({projectExpensesOnly.length})
+            </button>
+            <button
+              onClick={() => setActiveTab("BUSINESS")}
+              className={`flex-1 lg:flex-none px-3 py-1 font-extrabold text-[11px] rounded-md cursor-pointer transition-all whitespace-nowrap ${
+                activeTab === "BUSINESS"
+                  ? "bg-surface-white text-brand-orange shadow-2xs"
+                  : "text-text-secondary hover:text-text-primary"
+              }`}
+            >
+              Company ({businessExpensesOnly.length})
+            </button>
           </div>
-          <div className="w-full md:w-48">
+
+          {/* Search Bar & Category Filter */}
+          <div className="flex flex-col sm:flex-row flex-1 gap-2 w-full">
+            <div className="relative flex-1 w-full">
+              <IconSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-secondary" />
+              <input
+                type="text"
+                placeholder="Search title, project, notes..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full h-8 rounded-lg border border-border bg-surface-page pl-8 pr-3 text-base sm:text-[11px] shadow-2xs transition-all placeholder:text-text-secondary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-orange font-semibold"
+              />
+            </div>
+
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="flex h-9 w-full rounded-lg border border-border bg-surface-white px-3 py-1 text-sm md:text-[15px] shadow-sm transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-orange font-semibold"
+              className="w-full sm:w-auto h-8 rounded-lg border border-border bg-surface-page px-2.5 text-[11px] shadow-2xs transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-orange font-bold cursor-pointer"
             >
               <option value="ALL">All Categories</option>
-              <option value={ExpenseCategory.SOFTWARE}>Software / Subscriptions</option>
-              <option value={ExpenseCategory.HOSTING}>Server Hosting</option>
-              <option value={ExpenseCategory.DOMAINS}>Domain Names</option>
-              <option value={ExpenseCategory.MARKETING}>Marketing & Sales</option>
-              <option value={ExpenseCategory.OFFICE}>Office Rent & Supplies</option>
-              <option value={ExpenseCategory.TRAVEL}>Travel & Client Meetings</option>
-              <option value={ExpenseCategory.TEAM_PAYMENTS}>Team Payments</option>
-              <option value={ExpenseCategory.OTHER}>Other Business Expense</option>
+              <option value={ExpenseCategory.SOFTWARE}>Software / Subscriptions — Company</option>
+              <option value={ExpenseCategory.HOSTING}>Server Hosting — Project / Company</option>
+              <option value={ExpenseCategory.DOMAINS}>Domain Names — Project / Company</option>
+              <option value={ExpenseCategory.MARKETING}>Marketing &amp; Sales — Company</option>
+              <option value={ExpenseCategory.OFFICE}>Office, Food &amp; Supplies — Company</option>
+              <option value={ExpenseCategory.TRAVEL}>Travel &amp; Meetings — Company</option>
+              <option value={ExpenseCategory.TEAM_PAYMENTS}>Team Payments — Company</option>
+              <option value={ExpenseCategory.OTHER}>Other Business Expense — Company</option>
             </select>
           </div>
         </div>
 
-        {/* Date Filter */}
-        <div className="flex flex-col sm:flex-row gap-3 items-center text-xs text-text-secondary">
-          <div className="flex items-center gap-1.5 w-full sm:w-auto">
-            <IconCalendar className="h-4 w-4 text-text-secondary" />
-            <span className="font-semibold">Filter Date:</span>
+        {/* Date Filter Row */}
+        <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-text-secondary pt-2 border-t border-border/50">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1 font-bold text-text-primary">
+              <IconCalendar className="h-3.5 w-3.5 text-brand-orange" />
+              <span>Date Range:</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <input
+                type="date"
+                value={startDateFilter}
+                onChange={(e) => setStartDateFilter(e.target.value)}
+                className="h-7 rounded-lg border border-border bg-surface-page px-2 text-[11px] font-semibold shadow-2xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-orange cursor-pointer"
+              />
+              <span className="text-text-secondary font-medium">to</span>
+              <input
+                type="date"
+                value={endDateFilter}
+                onChange={(e) => setEndDateFilter(e.target.value)}
+                className="h-7 rounded-lg border border-border bg-surface-page px-2 text-[11px] font-semibold shadow-2xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-orange cursor-pointer"
+              />
+            </div>
           </div>
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <input
-              type="date"
-              value={startDateFilter}
-              onChange={(e) => setStartDateFilter(e.target.value)}
-              className="flex h-8 rounded-lg border border-border bg-surface-white px-2 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-orange font-semibold"
-            />
-            <span>to</span>
-            <input
-              type="date"
-              value={endDateFilter}
-              onChange={(e) => setEndDateFilter(e.target.value)}
-              className="flex h-8 rounded-lg border border-border bg-surface-white px-2 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-orange font-semibold"
-            />
-            {(startDateFilter || endDateFilter) && (
-              <button
-                onClick={() => {
-                  setStartDateFilter("");
-                  setEndDateFilter("");
-                }}
-                className="text-rose-500 font-bold hover:underline ml-2 cursor-pointer"
-              >
-                Clear Dates
-              </button>
-            )}
-          </div>
+
+          {(startDateFilter || endDateFilter || searchQuery || selectedCategory !== "ALL" || activeTab !== "ALL") && (
+            <button
+              onClick={() => {
+                setStartDateFilter("");
+                setEndDateFilter("");
+                setSearchQuery("");
+                setSelectedCategory("ALL");
+                setActiveTab("ALL");
+              }}
+              className="text-[10.5px] font-bold text-brand-orange hover:text-brand-orange-hover hover:underline transition-colors cursor-pointer ml-auto"
+            >
+              Reset Filters
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Mobile Card Layout - Premium Styling with Category Colors */}
-      <div className="block md:hidden space-y-3 font-sans">
+      {/* Mobile Touch-Friendly Card View (< 768px) */}
+      <div className="block md:hidden space-y-2.5 font-sans">
         {filteredExpenses.length === 0 ? (
-          <div className="p-8 text-center text-text-secondary bg-surface-white border border-border rounded-xl font-semibold">
-            No expenses found.
+          <div className="p-6 text-center text-xs md:text-sm text-text-secondary bg-surface-white border border-border rounded-xl font-medium">
+            No expenses found matching filters.
           </div>
         ) : (
           filteredExpenses.map((e) => {
             const catConf = getCategoryConfig(e.category);
             return (
-              <div key={e.id} className={`p-4 bg-surface-white border border-border ${catConf.border} rounded-r-xl rounded-l-none space-y-3 shadow-sm hover:shadow-md transition-all`}>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <span className="text-[10px] text-text-secondary font-bold block">{formatDate(e.date)}</span>
-                    <span className="font-bold text-stone-900 block mt-0.5 text-sm">{e.title}</span>
-                    <span className="text-xs text-text-secondary block font-semibold mt-0.5">
-                      {e.project?.name || <span className="text-stone-400 font-normal italic text-[11px]">General Overhead</span>}
+              <div
+                key={e.id}
+                className="p-3.5 bg-surface-white border border-border rounded-xl space-y-2 shadow-xs hover:border-brand-orange/40 transition-colors"
+              >
+                <div className="flex justify-between items-start gap-2">
+                  <div className="space-y-0.5 min-w-0 flex-1">
+                    <span className="text-xs md:text-sm font-bold text-stone-900 dark:text-stone-100 block truncate">
+                      {e.title}
+                    </span>
+                    <span className="text-xs text-text-secondary font-medium block">
+                      {formatDate(e.date)}
                     </span>
                   </div>
-                  <div className="text-right">
-                    <span className="text-sm font-black text-rose-600 block">{formatCurrency(Number(e.amount))}</span>
-                    <span className={`inline-flex items-center gap-1 mt-1 text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full ${catConf.badge}`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${catConf.dot}`} />
-                      {e.category.replace(/_/g, " ").toLowerCase()}
+                  <div className="text-right shrink-0">
+                    <span className="text-sm font-bold text-rose-600 dark:text-rose-400 block">
+                      {formatCurrency(Number(e.amount))}
+                    </span>
+                    <span className={`inline-flex items-center gap-1 mt-1 text-[10px] font-extrabold px-2 py-0.5 rounded-md border ${
+                      e.projectId
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900/50"
+                        : "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-900/50"
+                    }`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${e.projectId ? "bg-emerald-500" : "bg-blue-500"}`} />
+                      {e.projectId ? "Client Project Cost" : "Company Expense"}
                     </span>
                   </div>
                 </div>
-                
-                {e.notes && (
-                  <div className="pt-2 border-t border-dashed border-border text-xs text-text-secondary">
-                    <span className="text-[10px] text-text-secondary uppercase font-extrabold tracking-wider block">Notes</span>
-                    <p className="mt-0.5 text-stone-700 font-medium break-words leading-relaxed">{e.notes}</p>
-                  </div>
-                )}
+
+                <div className="flex items-center justify-between pt-2 border-t border-border/50 text-xs text-text-secondary">
+                  <span className="font-medium">
+                    {e.project?.name ? (
+                      <span className="text-stone-800 dark:text-stone-200 font-semibold flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-brand-orange shrink-0" />
+                        <span className="truncate max-w-[150px]">{e.project.name}</span>
+                      </span>
+                    ) : (
+                      <span className="text-stone-400 italic font-normal">Company Expense</span>
+                    )}
+                  </span>
+                  {e.notes && (
+                    <span className="text-xs text-text-secondary truncate max-w-[140px] font-normal italic">
+                      {e.notes}
+                    </span>
+                  )}
+                </div>
               </div>
             );
           })
         )}
       </div>
 
-      {/* Desktop Table Layout - Premium SaaS style layout with dynamic left indicators */}
-      <div className="hidden md:block w-full overflow-hidden rounded-xl border border-border bg-surface-white font-sans shadow-sm">
-        <div className="w-full overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-stone-50/70 border-b border-border text-[10px] md:text-xs font-extrabold text-text-secondary uppercase tracking-wider">
-                <th className="px-5 py-3.5">Date</th>
-                <th className="px-5 py-3.5">Title / Description</th>
-                <th className="px-5 py-3.5">Category</th>
-                <th className="px-5 py-3.5">Linked Project</th>
-                <th className="px-5 py-3.5">Notes</th>
-                <th className="px-5 py-3.5 text-right">Amount</th>
+      {/* Desktop Compact Table View (>= 768px) */}
+      <div className="hidden md:block w-full max-w-full rounded-xl border border-border bg-surface-white font-sans shadow-2xs overflow-hidden">
+        <table className="w-full text-left border-collapse table-auto">
+          <thead>
+            <tr className="bg-stone-50/80 dark:bg-stone-900/40 border-b border-border text-[10.5px] font-black text-text-secondary uppercase tracking-wider">
+              <th className="px-3.5 py-2.5 w-[110px]">Date</th>
+              <th className="px-3.5 py-2.5">Title / Description</th>
+              <th className="px-3.5 py-2.5 w-[150px]">Category</th>
+              <th className="px-3.5 py-2.5 w-[160px]">Linked Project</th>
+              <th className="px-3.5 py-2.5">Notes</th>
+              <th className="px-3.5 py-2.5 text-right w-[110px]">Amount</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border/60 text-xs text-text-primary">
+            {filteredExpenses.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="px-3.5 py-6 text-center text-text-secondary font-medium">
+                  No expenses match the selected filters.
+                </td>
               </tr>
-            </thead>
-            <tbody className="divide-y divide-border/60 text-sm text-text-primary">
-              {filteredExpenses.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-5 py-8 text-center text-text-secondary font-semibold">
-                    No expenses found.
-                  </td>
-                </tr>
-              ) : (
-                filteredExpenses.map((e) => {
-                  const catConf = getCategoryConfig(e.category);
-                  return (
-                    <tr key={e.id} className="group hover:bg-stone-50/40 transition-colors">
-                      {/* Left border highlight effect on row hover */}
-                      <td className={`px-5 py-4 text-sm md:text-[15px] font-semibold whitespace-nowrap ${catConf.border} border-l-0 group-hover:border-l-[4px] transition-all`}>
-                        {formatDate(e.date)}
-                      </td>
-                      <td className="px-5 py-4 text-sm md:text-[15.5px] font-bold text-stone-900 whitespace-nowrap">
-                        {e.title}
-                      </td>
-                      <td className="px-5 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center gap-1 text-[10px] md:text-[11.5px] font-extrabold uppercase px-2 py-0.5 rounded-full ${catConf.badge}`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${catConf.dot}`} />
-                          {e.category.replace(/_/g, " ").toLowerCase()}
+            ) : (
+              filteredExpenses.map((e) => {
+                const catConf = getCategoryConfig(e.category);
+                return (
+                  <tr key={e.id} className="hover:bg-stone-50/50 dark:hover:bg-stone-800/30 transition-colors">
+                    <td className="px-3.5 py-2.5 font-semibold text-text-secondary text-[11px] whitespace-nowrap">
+                      {formatDate(e.date)}
+                    </td>
+                    <td className="px-3.5 py-2.5 font-bold text-stone-900 dark:text-stone-100 text-xs">
+                      {e.title}
+                    </td>
+                    <td className="px-3.5 py-2.5">
+                      <span className={`inline-flex items-center gap-1.5 text-[11px] font-extrabold px-2.5 py-1 rounded-lg border w-fit ${
+                        e.projectId
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900/50"
+                          : "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-900/50"
+                      }`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${e.projectId ? "bg-emerald-500" : "bg-blue-500"}`} />
+                        {e.projectId ? "Client Project Cost" : "Company Expense"}
+                      </span>
+                    </td>
+                    <td className="px-3.5 py-2.5 text-xs font-semibold text-text-secondary">
+                      {e.project?.name ? (
+                        <span className="inline-flex items-center gap-1 text-stone-800 dark:text-stone-200 font-bold truncate max-w-[150px]">
+                          <span className="w-1.5 h-1.5 rounded-full bg-brand-orange shrink-0" />
+                          <span className="truncate">{e.project.name}</span>
                         </span>
-                      </td>
-                      <td className="px-5 py-4 text-sm md:text-[14.5px] font-semibold text-text-secondary whitespace-nowrap">
-                        {e.project?.name ? (
-                          <span className="inline-flex items-center gap-1.5 text-stone-800">
-                            {/* Modern direct SVG folder icon */}
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-brand-orange/60" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" fill="none" strokeLinecap="round" strokeLinejoin="round">
-                              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                              <path d="M5 4h4l3 3h7a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-11a2 2 0 0 1 2 -2" />
-                            </svg>
-                            {e.project.name}
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center px-2 py-0.5 bg-stone-100 text-stone-500 font-medium rounded text-[11px] md:text-xs border border-stone-200/50">
-                            General Overhead
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-5 py-4 text-xs md:text-sm text-text-secondary max-w-xs overflow-hidden text-ellipsis whitespace-nowrap font-medium italic">
-                        {e.notes || <span className="text-stone-300 font-normal not-italic">—</span>}
-                      </td>
-                      <td className="px-5 py-4 text-right font-black text-rose-600 whitespace-nowrap text-base md:text-lg">
-                        {formatCurrency(Number(e.amount))}
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                      ) : (
+                        <span className="text-stone-400 dark:text-stone-500 font-normal italic text-[11px]">
+                          Company Expense
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-3.5 py-2.5 text-xs text-text-secondary max-w-[200px] truncate font-normal">
+                      {e.notes || <span className="text-stone-300 dark:text-stone-600">—</span>}
+                    </td>
+                    <td className="px-3.5 py-2.5 text-right font-black text-rose-600 dark:text-rose-400 text-xs whitespace-nowrap">
+                      {formatCurrency(Number(e.amount))}
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   );

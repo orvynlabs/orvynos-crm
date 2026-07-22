@@ -10,48 +10,21 @@ if (connectionString && connectionString.startsWith('"') && connectionString.end
   connectionString = connectionString.substring(1, connectionString.length - 1);
 }
 
-// In all local environments (not on Vercel), bypass the PgBouncer pooler to prevent auth and idle drops
-if (!process.env.VERCEL && connectionString) {
-  connectionString = connectionString.replace('-pooler', '');
-}
-
 if (!globalForPrisma.pool) {
-  const poolConfig: any = {
-    max: 10,                        // Allow up to 10 connections for concurrent queries
-    idleTimeoutMillis: 10000,      // Terminate idle clients after 10s to keep pool fresh
-    connectionTimeoutMillis: 5000, // Fail fast (5s) if the database is cold-starting or down
-  };
+  globalForPrisma.pool = new Pool({
+    connectionString,
+    max: 5, // Optimized max connections for Neon Free Tier limit (20 connections max across app)
+    idleTimeoutMillis: 15000,
+    connectionTimeoutMillis: 5000,
+    ssl: { rejectUnauthorized: false },
+  });
 
-  if (connectionString) {
-    try {
-      const parsedUrl = new URL(connectionString);
-      poolConfig.user = decodeURIComponent(parsedUrl.username);
-      poolConfig.password = decodeURIComponent(parsedUrl.password);
-      poolConfig.host = parsedUrl.hostname;
-      poolConfig.port = parsedUrl.port ? parseInt(parsedUrl.port, 10) : 5432;
-      poolConfig.database = parsedUrl.pathname.substring(1);
-      
-      const sslMode = parsedUrl.searchParams.get('sslmode');
-      if (sslMode === 'verify-full' || sslMode === 'require' || parsedUrl.searchParams.has('ssl')) {
-        poolConfig.ssl = { rejectUnauthorized: false };
-      }
-    } catch (err) {
-      console.error('Prisma DB helper: failed to parse connection string. Falling back to raw string:', err);
-      poolConfig.connectionString = connectionString;
-    }
-  } else {
-    poolConfig.connectionString = connectionString;
-  }
-
-  globalForPrisma.pool = new Pool(poolConfig);
-
-  // Handle unexpected errors on idle pool connections to prevent crashes
   globalForPrisma.pool.on('error', (err) => {
-    console.error('Unexpected error on idle database connection:', err);
+    console.warn('Notice: Idle DB connection ended by Neon pooler:', err.message);
   });
 }
 
-if (!globalForPrisma.prisma) {
+if (!globalForPrisma.prisma || !(globalForPrisma.prisma as any).dailyUpdate) {
   const adapter = new PrismaPg(globalForPrisma.pool);
   globalForPrisma.prisma = new PrismaClient({ adapter });
 }
@@ -59,3 +32,29 @@ if (!globalForPrisma.prisma) {
 export const prisma = globalForPrisma.prisma;
 export const pool = globalForPrisma.pool;
 
+/**
+ * Executes a database operation with automatic retry logic if the connection is dropped or timing out.
+ */
+export async function withRetry<T>(fn: () => Promise<T>, retries = 2): Promise<T> {
+  let attempt = 0;
+  while (attempt <= retries) {
+    try {
+      return await fn();
+    } catch (err: any) {
+      attempt++;
+      const isConnectionError =
+        err.message?.includes('timeout') ||
+        err.message?.includes('terminated') ||
+        err.message?.includes('Connection') ||
+        err.code === 'ECONNRESET';
+
+      if (!isConnectionError || attempt > retries) {
+        throw err;
+      }
+
+      console.warn(`[Database Retry] Attempt ${attempt}/${retries} after transient connection error: ${err.message}`);
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+  }
+  return fn();
+}

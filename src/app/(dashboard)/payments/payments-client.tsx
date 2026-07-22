@@ -21,7 +21,7 @@ import {
   IconArrowDownLeft, 
   IconArrowUpRight 
 } from "@tabler/icons-react";
-import { PaymentMethod } from "@/generated/prisma/client";
+import { PaymentMethod } from "@/lib/enums";
 
 type PaymentsClientProps = {
   initialPayments: PaymentRow[];
@@ -79,32 +79,41 @@ export function PaymentsClient({
   });
 
   return (
-    <div className="space-y-6 text-left">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div className="space-y-6 font-sans text-text-primary select-none pb-12">
+      {/* 🚀 Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface-white border border-border/80 rounded-2xl p-4 md:p-5 shadow-2xs">
         <div>
-          <h1 className="text-2xl md:text-4xl font-bold tracking-tight text-stone-900">Payments</h1>
-          <p className="text-sm md:text-[15px] text-stone-500 mt-1">
-            All incoming client payments and outgoing team or business payouts in one timeline
+          <div className="flex items-center gap-2">
+            <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-600 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-md">
+              Finance & Inflows
+            </span>
+          </div>
+          <h1 className="text-xl md:text-2xl font-black tracking-tight text-text-primary mt-1">
+            Payments & Financial Inflows
+          </h1>
+          <p className="text-xs text-text-secondary font-medium">
+            Timeline of incoming client payments, milestone receipts, and financial records.
           </p>
         </div>
-        <div className="flex items-center gap-3 w-full md:w-auto shrink-0 no-print">
 
+        <div className="flex items-center gap-3 shrink-0 no-print">
           <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
             <SheetTrigger
               render={
-                <Button className="font-bold text-xs bg-brand-orange hover:bg-brand-orange-hover text-white py-2.5 px-4 rounded-lg flex items-center justify-center gap-1.5 shadow-none border-0 min-h-[40px] flex-1 md:flex-none md:w-auto cursor-pointer">
-                  <IconPlus className="h-4 w-4" />
-                  Add Payment
+                <Button className="font-bold text-xs bg-brand-orange hover:bg-brand-orange-hover text-white py-2.5 px-4 rounded-xl flex items-center justify-center gap-1.5 shadow-xs border-0 h-10 cursor-pointer active:scale-95 transition-all">
+                  <IconPlus className="h-4 w-4" stroke={2.5} />
+                  <span>Add Payment</span>
                 </Button>
               }
             />
-            <SheetContent className="w-full sm:max-w-[450px] p-6 bg-surface-white border-l border-border h-full flex flex-col justify-between overflow-y-auto">
+            <SheetContent className="w-full sm:max-w-[420px] p-5 bg-surface-white border-l border-border h-full flex flex-col justify-between overflow-y-auto">
               <div>
-                <SheetHeader className="mb-6">
-                  <SheetTitle className="text-lg font-bold text-text-primary text-left">
+                <SheetHeader className="mb-4">
+                  <SheetTitle className="text-base font-bold text-text-primary text-left">
                     Record Client Payment
                   </SheetTitle>
-                  <SheetDescription className="text-xs text-text-secondary mt-1 text-left">
+                  <SheetDescription className="text-xs text-text-secondary mt-0.5 text-left">
                     Log a payment received from a client for a project milestone.
                   </SheetDescription>
                 </SheetHeader>
@@ -122,105 +131,125 @@ export function PaymentsClient({
       </div>
 
       {/* Metrics Section: 4 columns */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
-        {/* Metric 1: This Month Payments */}
-        <div className="p-4 bg-surface-white border border-border rounded-xl flex items-center justify-between gap-3 shadow-sm hover:shadow-md transition-shadow duration-200 animate-fade-in">
-          <div>
-            <span className="text-[10px] md:text-[13px] font-bold uppercase text-stone-500 tracking-wider block">
-              This month
-            </span>
-            <span className="text-lg sm:text-xl lg:text-3xl font-black text-stone-900 mt-0.5 block">
-              {formatCurrency(metrics.thisMonthRevenue)}
-            </span>
-            <span className="text-[9px] md:text-xs text-stone-400 font-medium mt-0.5 block">
-              Client payments received this month
-            </span>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+        {/* Metric 1: This Month Received */}
+        <div className="p-4 bg-surface-white border border-border/80 rounded-2xl flex flex-col justify-between shadow-2xs hover:border-brand-orange/30 transition-all select-none">
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-[10px] font-extrabold uppercase text-text-secondary tracking-wider block">
+                This Month Received
+              </span>
+              <span className="text-lg md:text-xl font-black text-emerald-600 leading-tight mt-1 block">
+                {formatCurrency(metrics.thisMonthRevenue)}
+              </span>
+            </div>
+            <div className="w-10 h-10 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 rounded-xl flex items-center justify-center shrink-0 border border-emerald-100 dark:border-emerald-900/30 shadow-3xs">
+              <IconArrowDownLeft className="h-5 w-5 stroke-[2.2]" />
+            </div>
           </div>
-          <div className="w-9 h-9 bg-emerald-50 text-emerald-600 rounded-lg flex items-center justify-center shrink-0 border border-emerald-100/50">
-            <IconArrowDownLeft className="h-4.5 w-4.5" />
-          </div>
+          <p className="text-[11px] text-text-secondary font-medium mt-3 pt-2.5 border-t border-border/50">
+            Client payments collected this month.
+          </p>
         </div>
 
-        {/* Metric 2: Total Expenses (This Month) */}
-        <div className="p-4 bg-surface-white border border-border rounded-xl flex items-center justify-between gap-3 shadow-sm hover:shadow-md transition-shadow duration-200 animate-fade-in">
-          <div>
-            <span className="text-[10px] md:text-[13px] font-bold uppercase text-stone-500 tracking-wider block">
-              Expenses (month)
-            </span>
-            <span className="text-lg sm:text-xl lg:text-3xl font-black text-stone-900 mt-0.5 block">
-              {formatCurrency(metrics.thisMonthExpenses)}
-            </span>
-            <span className="text-[9px] md:text-xs text-stone-400 font-medium mt-0.5 block">
-              Team salaries, tools & business costs
-            </span>
+        {/* Metric 2: This Month Expenses */}
+        <div className="p-4 bg-surface-white border border-border/80 rounded-2xl flex flex-col justify-between shadow-2xs hover:border-brand-orange/30 transition-all select-none">
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-[10px] font-extrabold uppercase text-text-secondary tracking-wider block">
+                This Month Expenses
+              </span>
+              <span className="text-lg md:text-xl font-black text-rose-600 leading-tight mt-1 block">
+                {formatCurrency(metrics.thisMonthExpenses)}
+              </span>
+            </div>
+            <div className="w-10 h-10 bg-rose-50 dark:bg-rose-950/30 text-rose-600 rounded-xl flex items-center justify-center shrink-0 border border-rose-100 dark:border-rose-900/30 shadow-3xs">
+              <IconArrowUpRight className="h-5 w-5 stroke-[2.2]" />
+            </div>
           </div>
-          <div className="w-9 h-9 bg-amber-50 text-amber-600 rounded-lg flex items-center justify-center shrink-0 border border-amber-100/50">
-            <IconArrowUpRight className="h-4.5 w-4.5" />
-          </div>
+          <p className="text-[11px] text-text-secondary font-medium mt-3 pt-2.5 border-t border-border/50">
+            Team payouts &amp; overhead spent this month.
+          </p>
         </div>
 
-        {/* Metric 3: Overall client payments received */}
-        <div className="p-4 bg-surface-white border border-border rounded-xl flex items-center justify-between gap-3 shadow-sm hover:shadow-md transition-shadow duration-200 animate-fade-in">
-          <div>
-            <span className="text-[10px] md:text-[13px] font-bold uppercase text-stone-500 tracking-wider block">
-              Total collected
-            </span>
-            <span className="text-lg sm:text-xl lg:text-3xl font-black text-stone-900 mt-0.5 block">
-              {formatCurrency(metrics.overallRevenue)}
-            </span>
-            <span className="text-[9px] md:text-xs text-stone-400 font-medium mt-0.5 block">
-              All-time revenue from all clients
-            </span>
+        {/* Metric 3: Total Collected */}
+        <div className="p-4 bg-surface-white border border-border/80 rounded-2xl flex flex-col justify-between shadow-2xs hover:border-brand-orange/30 transition-all select-none">
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-[10px] font-extrabold uppercase text-text-secondary tracking-wider block">
+                Total Collected
+              </span>
+              <span className="text-lg md:text-xl font-black text-text-primary leading-tight mt-1 block">
+                {formatCurrency(metrics.overallRevenue)}
+              </span>
+            </div>
+            <div className="w-10 h-10 bg-surface-page text-brand-orange rounded-xl flex items-center justify-center shrink-0 border border-border/60 shadow-3xs">
+              <IconArrowDownLeft className="h-5 w-5 stroke-[2.2]" />
+            </div>
           </div>
-          <div className="w-9 h-9 bg-emerald-50 text-emerald-600 rounded-lg flex items-center justify-center shrink-0 border border-emerald-100/50">
-            <IconArrowDownLeft className="h-4.5 w-4.5" />
-          </div>
+          <p className="text-[11px] text-text-secondary font-medium mt-3 pt-2.5 border-t border-border/50">
+            Total revenue collected from all projects.
+          </p>
         </div>
 
-        {/* Metric 4: Total Expenses */}
-        <div className="p-4 bg-surface-white border border-border rounded-xl flex items-center justify-between gap-3 shadow-sm hover:shadow-md transition-shadow duration-200 animate-fade-in">
-          <div>
-            <span className="text-[10px] md:text-[13px] font-bold uppercase text-stone-500 tracking-wider block">
-              Total expenses
-            </span>
-            <span className="text-lg sm:text-xl lg:text-3xl font-black text-stone-900 mt-0.5 block">
-              {formatCurrency(metrics.overallExpenses)}
-            </span>
-            <span className="text-[9px] md:text-xs text-stone-400 font-medium mt-0.5 block">
-              All-time business outgoings
-            </span>
+        {/* Metric 4: Total Money Spent */}
+        <div className="p-4 bg-surface-white border border-border/80 rounded-2xl flex flex-col justify-between shadow-2xs hover:border-brand-orange/30 transition-all select-none">
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-[10px] font-extrabold uppercase text-text-secondary tracking-wider block">
+                Total Money Spent
+              </span>
+              <span className="text-lg md:text-xl font-black text-text-primary leading-tight mt-1 block">
+                {formatCurrency(metrics.overallExpenses)}
+              </span>
+            </div>
+            <div className="w-10 h-10 bg-surface-page text-text-secondary rounded-xl flex items-center justify-center shrink-0 border border-border/60 shadow-3xs">
+              <IconArrowUpRight className="h-5 w-5 stroke-[2.2]" />
+            </div>
           </div>
-          <div className="w-9 h-9 bg-purple-50 text-purple-600 rounded-lg flex items-center justify-center shrink-0 border border-purple-100/50">
-            <IconArrowUpRight className="h-4.5 w-4.5" />
-          </div>
+          <p className="text-[11px] text-text-secondary font-medium mt-3 pt-2.5 border-t border-border/50">
+            Total of all business &amp; project expenses to date.
+          </p>
         </div>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-3 no-print">
-        <div className="relative flex-1">
-          <IconSearch className="absolute left-3 top-3 h-4 w-4 text-text-secondary" />
+      {/* 🔍 Search & Method Filter Toolbar */}
+      <div className="bg-surface-white border border-border/80 rounded-2xl p-3.5 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-3 no-print">
+        <div className="relative w-full sm:w-64 transition-all duration-300 focus-within:sm:w-72">
+          <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-secondary" />
           <input
             type="text"
-            placeholder="Search by client, project, or receipt number..."
+            placeholder="Search client, project, or receipt..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="flex h-10 w-full rounded-lg border border-border bg-surface-white pl-9 pr-3 py-1 text-sm md:text-[15px] shadow-sm transition-colors placeholder:text-text-secondary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-orange font-semibold animate-fade-in"
+            className="w-full pl-9 pr-3 h-9 bg-surface-page border border-border/80 rounded-xl text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-brand-orange"
           />
         </div>
-        <div className="w-full md:w-48">
-          <select
-            value={selectedMethod}
-            onChange={(e) => setSelectedMethod(e.target.value)}
-            className="flex h-10 w-full rounded-lg border border-border bg-surface-white px-3 py-1 text-sm md:text-[15px] shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-orange font-semibold"
-          >
-            <option value="ALL">All Methods</option>
-            <option value={PaymentMethod.BANK_TRANSFER}>Bank Transfer</option>
-            <option value={PaymentMethod.UPI}>UPI</option>
-            <option value={PaymentMethod.CASH}>Cash</option>
-            <option value={PaymentMethod.CHEQUE}>Cheque</option>
-            <option value={PaymentMethod.CARD}>Card</option>
-            <option value={PaymentMethod.OTHER}>Other</option>
-          </select>
+
+        {/* Payment Method Pills */}
+        <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto no-scrollbar py-0.5">
+          {[
+            { label: "All Methods", value: "ALL" },
+            { label: "Bank Transfer", value: PaymentMethod.BANK_TRANSFER },
+            { label: "UPI", value: PaymentMethod.UPI },
+            { label: "Cash", value: PaymentMethod.CASH },
+            { label: "Cheque", value: PaymentMethod.CHEQUE },
+            { label: "Card", value: PaymentMethod.CARD },
+            { label: "Other", value: PaymentMethod.OTHER },
+          ].map((method) => (
+            <button
+              key={method.value}
+              onClick={() => setSelectedMethod(method.value)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer active:scale-95 ${
+                selectedMethod === method.value
+                  ? "bg-brand-orange text-white shadow-xs font-black"
+                  : "bg-surface-page text-text-secondary hover:text-text-primary"
+              }`}
+              style={{ WebkitTapHighlightColor: "transparent" }}
+            >
+              {method.label}
+            </button>
+          ))}
         </div>
       </div>
 

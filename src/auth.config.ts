@@ -42,6 +42,9 @@ export const authConfig = {
       if (user) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         token.role = (user as any).role;
+        if (user.image) {
+          token.picture = user.image;
+        }
       }
       return token;
     },
@@ -49,6 +52,9 @@ export const authConfig = {
       if (session.user) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (session.user as any).role = token.role;
+        if (token.picture) {
+          session.user.image = token.picture as string;
+        }
       }
       return session;
     }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
+import { useState, useTransition, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -19,6 +19,16 @@ import {
   IconClock,
   IconLoader,
   IconPlus,
+  IconFileText,
+  IconSearch,
+  IconCloudUpload,
+  IconDownload,
+  IconTrash,
+  IconExternalLink,
+  IconReceipt,
+  IconFileCheck,
+  IconPhoto,
+  IconSparkles,
 } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,6 +44,8 @@ import { updateProject } from "../actions";
 import { PaymentForm } from "@/components/payments/payment-form";
 import { PaymentHistoryTable } from "@/components/payments/payment-history-table";
 import { createPayment } from "@/app/(dashboard)/payments/actions";
+import { DeliveryBadge } from "@/components/projects/delivery-badge";
+import { createDocument, deleteDocument } from "@/app/(dashboard)/documents/actions";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -80,6 +92,61 @@ type NoteRecord = {
   createdBy: { name: string } | null;
 };
 
+type DocumentRecord = {
+  id: string;
+  name: string;
+  type: string;
+  r2Key: string;
+  mimeType: string | null;
+  size: number | null;
+  createdAt: string;
+  uploadedBy: { name: string } | null;
+};
+
+type InvoiceRecord = {
+  id: string;
+  number: string;
+  total: number | string;
+  status: string;
+  issueDate: string;
+  dueDate: string | null;
+  pdfKey: string | null;
+  createdAt: string;
+};
+
+type ProposalRecord = {
+  id: string;
+  number: string;
+  title: string;
+  amount: number | string | null;
+  status: string;
+  validUntil: string | null;
+  pdfKey: string | null;
+  createdAt: string;
+};
+
+type AgreementRecord = {
+  id: string;
+  number: string;
+  title: string;
+  status: string;
+  effectiveDate: string | null;
+  expiresAt: string | null;
+  pdfKey: string | null;
+  createdAt: string;
+};
+
+type QuotationRecord = {
+  id: string;
+  number: string;
+  total: number | string;
+  status: string;
+  issueDate: string;
+  validUntil: string | null;
+  pdfKey: string | null;
+  createdAt: string;
+};
+
 type Project = {
   id: string;
   name: string;
@@ -102,6 +169,11 @@ type Project = {
   members: MemberRecord[];
   activities: ActivityRecord[];
   notes: NoteRecord[];
+  documents?: DocumentRecord[];
+  invoices?: InvoiceRecord[];
+  proposals?: ProposalRecord[];
+  agreements?: AgreementRecord[];
+  quotations?: QuotationRecord[];
 };
 
 /* ------------------------------------------------------------------ */
@@ -112,6 +184,7 @@ const TABS = [
   { key: "overview", label: "Overview", icon: IconLayoutDashboard },
   { key: "payments", label: "Payments", icon: IconCreditCard },
   { key: "team", label: "Team", icon: IconUsers },
+  { key: "documents", label: "Documents", icon: IconFileText },
   { key: "activity", label: "Activity", icon: IconActivity },
 ] as const;
 
@@ -249,6 +322,194 @@ export function ProjectDetailClient({ project, clients, teamMembers }: ProjectDe
   const [paymentErrorMsg, setPaymentErrorMsg] = useState("");
   const [isPaymentPending, startPaymentTransition] = useTransition();
 
+  // Documents tab state & actions
+  const docFileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedDocFile, setSelectedDocFile] = useState<File | null>(null);
+  const [isUploadingDocFile, setIsUploadingDocFile] = useState(false);
+  const [docMimeType, setDocMimeType] = useState("application/octet-stream");
+
+  const [docCategory, setDocCategory] = useState<string>("ALL");
+  const [docSearchQuery, setDocSearchQuery] = useState<string>("");
+  const [isDocSheetOpen, setIsDocSheetOpen] = useState(false);
+  const [isDocPending, startDocTransition] = useTransition();
+  const [docErrorMsg, setDocErrorMsg] = useState("");
+
+  const [docName, setDocName] = useState("");
+  const [docType, setDocType] = useState("DESIGNS");
+  const [docUrl, setDocUrl] = useState("");
+  const [docSize, setDocSize] = useState(0);
+
+  const [docUploadProgress, setDocUploadProgress] = useState(0);
+
+  const handleDocFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setSelectedDocFile(file);
+    setIsUploadingDocFile(true);
+    setDocUploadProgress(20);
+    setDocErrorMsg("");
+
+    if (!docName.trim()) {
+      setDocName(file.name);
+    }
+    setDocSize(file.size);
+
+    if (file.type.startsWith("image/")) {
+      setDocType("DESIGNS");
+    } else if (file.type === "application/pdf") {
+      setDocType("PDFS");
+    } else if (file.name.toLowerCase().includes("logo")) {
+      setDocType("LOGOS");
+    } else {
+      setDocType("DOCUMENTS");
+    }
+
+    const progressTimer = setInterval(() => {
+      setDocUploadProgress((p) => (p < 85 ? p + 15 : p));
+    }, 150);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (res.ok && data.url) {
+        setDocUploadProgress(100);
+        setDocUrl(data.url);
+        setDocMimeType(data.mimeType || file.type || "application/octet-stream");
+      } else {
+        setDocErrorMsg(data.error || "Failed to upload file from device.");
+        setDocUploadProgress(0);
+      }
+    } catch (err: any) {
+      console.error("Doc upload error:", err);
+      setDocErrorMsg("Failed to upload file. Please try again.");
+      setDocUploadProgress(0);
+    } finally {
+      clearInterval(progressTimer);
+      setIsUploadingDocFile(false);
+    }
+  };
+
+  const clearSelectedDocFile = () => {
+    setSelectedDocFile(null);
+    setDocUrl("");
+    if (docFileInputRef.current) {
+      docFileInputRef.current.value = "";
+    }
+  };
+
+  const handleDocUploadSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!docName.trim()) return;
+    if (!docUrl.trim()) {
+      setDocErrorMsg("Please select a file from your system to upload.");
+      return;
+    }
+
+    setDocErrorMsg("");
+    startDocTransition(async () => {
+      const res = await createDocument({
+        name: docName.trim(),
+        type: docType,
+        r2Key: docUrl.trim(),
+        mimeType: docMimeType || (docType === "PDFS" ? "application/pdf" : docType === "DESIGNS" ? "image/png" : "application/octet-stream"),
+        size: Number(docSize) || 1024 * 150,
+        projectId: project.id,
+        clientId: project.client.id,
+      });
+
+      if (res.success) {
+        setIsDocSheetOpen(false);
+        setDocName("");
+        setDocUrl("");
+        setSelectedDocFile(null);
+        router.refresh();
+      } else {
+        setDocErrorMsg(res.error || "Failed to upload document.");
+      }
+    });
+  };
+
+  const handleDocDelete = (docId: string) => {
+    if (!confirm("Are you sure you want to delete this document?")) return;
+    startDocTransition(async () => {
+      const res = await deleteDocument(docId);
+      if (res.success) {
+        router.refresh();
+      }
+    });
+  };
+
+  const invoices = project.invoices || [];
+  const proposals = project.proposals || [];
+  const agreements = project.agreements || [];
+  const quotations = project.quotations || [];
+  const uploadedFiles = project.documents || [];
+
+  const filteredInvoices = invoices.filter(
+    (inv) =>
+      inv.number.toLowerCase().includes(docSearchQuery.toLowerCase()) ||
+      inv.status.toLowerCase().includes(docSearchQuery.toLowerCase())
+  );
+
+  const filteredProposals = proposals.filter(
+    (prop) =>
+      prop.number.toLowerCase().includes(docSearchQuery.toLowerCase()) ||
+      (prop.title && prop.title.toLowerCase().includes(docSearchQuery.toLowerCase())) ||
+      prop.status.toLowerCase().includes(docSearchQuery.toLowerCase())
+  );
+
+  const filteredAgreements = agreements.filter(
+    (agr) =>
+      agr.number.toLowerCase().includes(docSearchQuery.toLowerCase()) ||
+      (agr.title && agr.title.toLowerCase().includes(docSearchQuery.toLowerCase())) ||
+      agr.status.toLowerCase().includes(docSearchQuery.toLowerCase())
+  );
+
+  const filteredQuotations = quotations.filter(
+    (qtn) =>
+      qtn.number.toLowerCase().includes(docSearchQuery.toLowerCase()) ||
+      qtn.status.toLowerCase().includes(docSearchQuery.toLowerCase())
+  );
+
+  const filteredUploadedFiles = uploadedFiles.filter(
+    (file) =>
+      file.name.toLowerCase().includes(docSearchQuery.toLowerCase()) ||
+      file.type.toLowerCase().includes(docSearchQuery.toLowerCase())
+  );
+
+  const formatBytes = (bytes: number) => {
+  if (bytes === 0) return "0 Bytes";
+  const k = 1024;
+  const sizes = ["Bytes", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+};
+
+const getFileUrl = (key?: string | null) => {
+  if (!key) return "#";
+  const trimmed = key.trim();
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    if (trimmed.includes("orvynlabs.r2.dev") || trimmed.includes("cloud.r2.dev")) {
+      const fileName = trimmed.split("/").pop() || "document.pdf";
+      return `/api/files/uploads/${fileName}`;
+    }
+    return trimmed;
+  }
+  if (trimmed.startsWith("/api/files/")) {
+    return trimmed;
+  }
+  const cleanPath = trimmed.replace(/^\/+/, "");
+  return `/api/files/${cleanPath}`;
+};
+
   const handlePaymentSubmit = async (values: any) => {
     setPaymentErrorMsg("");
     startPaymentTransition(async () => {
@@ -350,6 +611,7 @@ export function ProjectDetailClient({ project, clients, teamMembers }: ProjectDe
               <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${getStatusBadgeClasses(project.status)}`}>
                 {project.status.replace("_", " ").toLowerCase()}
               </span>
+              <DeliveryBadge deadline={project.deadline} completedAt={project.completedAt} status={project.status} />
               {isRetainer && (
                 <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider bg-purple-50 text-purple-600">
                   Retainer
@@ -761,6 +1023,513 @@ export function ProjectDetailClient({ project, clients, teamMembers }: ProjectDe
             ) : (
               <div className="py-8 text-center text-text-secondary text-xs flex items-center justify-center gap-1.5 border border-dashed border-border rounded-lg">
                 No team members assigned to this project.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════════ DOCUMENTS TAB ═══════════════ */}
+      {activeTab === "documents" && (
+        <div className="animate-in fade-in duration-200 space-y-5">
+          {/* Header Bar & Actions */}
+          <div className="bg-surface-white border border-border rounded-xl p-5 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-base font-extrabold text-text-primary flex items-center gap-2">
+                <IconFileText className="h-5 w-5 text-brand-orange" />
+                Project Document Repository
+              </h3>
+              <p className="text-xs text-text-secondary font-medium mt-0.5">
+                Organized list of all invoices, proposals, agreements, quotations, and attached files for <span className="font-bold text-text-primary">{project.name}</span>.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <div className="relative">
+                <IconSearch className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
+                <input
+                  type="text"
+                  placeholder="Search project files..."
+                  value={docSearchQuery}
+                  onChange={(e) => setDocSearchQuery(e.target.value)}
+                  className="pl-9 pr-3 py-1.5 text-xs rounded-xl bg-surface-page border border-border/80 focus:outline-none focus:border-brand-orange w-44 sm:w-56 font-medium text-text-primary"
+                />
+              </div>
+
+              <Sheet open={isDocSheetOpen} onOpenChange={setIsDocSheetOpen}>
+                <SheetTrigger
+                  render={
+                    <Button size="sm" className="h-8 bg-brand-orange hover:bg-brand-orange/90 text-white font-bold text-xs gap-1.5 rounded-xl cursor-pointer">
+                      <IconCloudUpload className="h-4 w-4" />
+                      Upload File
+                    </Button>
+                  }
+                />
+                <SheetContent className="w-full max-w-[420px] p-6 bg-surface-white border-l border-border h-full flex flex-col justify-between overflow-y-auto">
+                  <div>
+                    <SheetHeader className="mb-6">
+                      <SheetTitle className="text-lg font-bold text-text-primary text-left">
+                        Upload Project Document
+                      </SheetTitle>
+                      <SheetDescription className="text-xs text-text-secondary mt-1 text-left">
+                        Upload a file or asset linked to {project.name}.
+                      </SheetDescription>
+                    </SheetHeader>
+
+                    <form onSubmit={handleDocUploadSubmit} className="space-y-4">
+                      {docErrorMsg && (
+                        <div className="p-3 text-xs bg-rose-50 text-rose-600 rounded-lg font-semibold border border-rose-200">
+                          {docErrorMsg}
+                        </div>
+                      )}
+
+                      <div className="space-y-1">
+                        <label className="text-xs font-bold text-text-primary">Document Title / Name</label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="e.g. Project Wireframes & Architecture v1.pdf"
+                          value={docName}
+                          onChange={(e) => setDocName(e.target.value)}
+                          className="w-full px-3 py-2 text-xs rounded-lg border border-border bg-surface-page font-medium focus:outline-none focus:border-brand-orange"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-xs font-bold text-text-primary">Category / File Type</label>
+                        <select
+                          value={docType}
+                          onChange={(e) => setDocType(e.target.value)}
+                          className="w-full px-3 py-2 text-xs rounded-lg border border-border bg-surface-page font-medium focus:outline-none focus:border-brand-orange"
+                        >
+                          <option value="DESIGNS">Designs & Wireframes</option>
+                          <option value="PDFS">PDF Documents</option>
+                          <option value="LOGOS">Logos & Branding</option>
+                          <option value="DOCUMENTS">Specifications / Brief</option>
+                          <option value="CLIENT_FILES">Client Uploaded Files</option>
+                          <option value="OTHER">Other Assets</option>
+                        </select>
+                      </div>
+
+                      {/* Native System File Picker Dropzone */}
+                      <div className="space-y-1">
+                        <label className="text-xs font-bold text-text-primary flex items-center justify-between">
+                          <span>Select System File *</span>
+                          <span className="text-[9.5px] text-text-secondary font-medium">Mobile Gallery / Laptop Explorer</span>
+                        </label>
+
+                        <input
+                          type="file"
+                          ref={docFileInputRef}
+                          onChange={handleDocFileSelect}
+                          className="hidden"
+                        />
+
+                        {!selectedDocFile ? (
+                          <div
+                            onClick={() => docFileInputRef.current?.click()}
+                            className="border-2 border-dashed border-border hover:border-brand-orange/60 bg-surface-page/50 rounded-xl p-4 text-center cursor-pointer transition-all group select-none"
+                          >
+                            <IconCloudUpload className="h-7 w-7 text-brand-orange mx-auto mb-1 group-hover:scale-110 transition-transform" />
+                            <p className="text-xs font-extrabold text-text-primary">
+                              Tap or Click to Pick System File
+                            </p>
+                            <p className="text-[10px] text-text-secondary font-medium mt-0.5">
+                              Upload photo, document, PDF, zip, design asset from device
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="border border-brand-orange/40 bg-brand-orange-tint/10 rounded-xl p-3 space-y-2">
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="w-7 h-7 rounded-lg bg-brand-orange text-white flex items-center justify-center shrink-0 shadow-xs">
+                                  <IconFileText className="h-4 w-4" />
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-xs font-extrabold text-text-primary truncate">
+                                    {selectedDocFile.name}
+                                  </p>
+                                  <p className="text-[9.5px] text-text-secondary font-medium">
+                                    {formatBytes(selectedDocFile.size)} • {isUploadingDocFile ? `Uploading (${docUploadProgress}%)...` : "Uploaded & Ready"}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 shrink-0">
+                                {isUploadingDocFile ? (
+                                  <IconLoader className="h-4 w-4 text-brand-orange animate-spin" />
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={clearSelectedDocFile}
+                                    className="text-[10px] font-bold text-rose-500 hover:underline cursor-pointer"
+                                  >
+                                    Change
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Progress Bar */}
+                            {isUploadingDocFile && (
+                              <div className="w-full bg-border/60 rounded-full h-1.5 overflow-hidden">
+                                <div
+                                  className="bg-brand-orange h-full rounded-full transition-all duration-200"
+                                  style={{ width: `${docUploadProgress}%` }}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="pt-4 flex gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setIsDocSheetOpen(false)}
+                          className="flex-1 text-xs font-bold"
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          type="submit"
+                          disabled={isDocPending}
+                          className="flex-1 text-xs font-bold bg-brand-orange text-white hover:bg-brand-orange/90"
+                        >
+                          {isDocPending ? "Uploading..." : "Save Document"}
+                        </Button>
+                      </div>
+                    </form>
+                  </div>
+                </SheetContent>
+              </Sheet>
+            </div>
+          </div>
+
+          {/* Sub-Category Filter Tabs */}
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1">
+            {[
+              { id: "ALL", label: "All Files", count: invoices.length + proposals.length + agreements.length + quotations.length + uploadedFiles.length },
+              { id: "INVOICES", label: "Invoices", count: invoices.length },
+              { id: "PROPOSALS", label: "Proposals", count: proposals.length },
+              { id: "AGREEMENTS", label: "Agreements", count: agreements.length },
+              { id: "QUOTATIONS", label: "Quotations", count: quotations.length },
+              { id: "FILES", label: "Uploaded Assets", count: uploadedFiles.length },
+            ].map((cat) => (
+              <button
+                key={cat.id}
+                onClick={() => setDocCategory(cat.id)}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer whitespace-nowrap ${
+                  docCategory === cat.id
+                    ? "bg-brand-orange text-white shadow-2xs"
+                    : "bg-surface-white border border-border/80 text-text-secondary hover:text-text-primary"
+                }`}
+              >
+                {cat.label} ({cat.count})
+              </button>
+            ))}
+          </div>
+
+          {/* DOCUMENT SECTIONS */}
+          <div className="space-y-6">
+            {/* 1. INVOICES */}
+            {(docCategory === "ALL" || docCategory === "INVOICES") && (
+              <div className="bg-surface-white border border-border rounded-xl p-5 shadow-sm space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-extrabold text-text-primary flex items-center gap-2">
+                    <IconReceipt className="h-4.5 w-4.5 text-emerald-600" />
+                    Invoices ({filteredInvoices.length})
+                  </h4>
+                  <span className="text-[10px] font-extrabold text-text-secondary uppercase tracking-wider">
+                    Financial Billing
+                  </span>
+                </div>
+
+                {filteredInvoices.length > 0 ? (
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {filteredInvoices.map((inv) => (
+                      <div key={inv.id} className="p-3.5 rounded-xl bg-surface-page/50 border border-border/60 hover:border-emerald-500/30 transition-all flex flex-col justify-between gap-3">
+                        <div>
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-extrabold text-text-primary text-xs tracking-tight">
+                              {inv.number}
+                            </span>
+                            <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase ${getPaymentStatusClasses(inv.status)}`}>
+                              {inv.status}
+                            </span>
+                          </div>
+                          <p className="text-lg font-black text-emerald-600 mt-1">
+                            {formatCurrency(Number(inv.total))}
+                          </p>
+                          <p className="text-[10px] text-text-secondary font-medium mt-0.5">
+                            Issued: {formatDateShort(inv.issueDate)} {inv.dueDate ? `• Due: ${formatDateShort(inv.dueDate)}` : ""}
+                          </p>
+                        </div>
+
+                        {inv.pdfKey ? (
+                          <a
+                            href={getFileUrl(inv.pdfKey)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center justify-center gap-1.5 text-[11px] font-bold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-lg py-1.5 transition-colors"
+                          >
+                            <IconDownload className="h-3.5 w-3.5" /> View / Download PDF
+                          </a>
+                        ) : (
+                          <span className="text-[10px] text-text-secondary/70 italic text-center">PDF file available in system</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="py-6 text-center text-text-secondary/70 text-xs italic bg-surface-page/30 border border-dashed border-border/60 rounded-xl">
+                    No invoices generated for this project yet.
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 2. PROPOSALS */}
+            {(docCategory === "ALL" || docCategory === "PROPOSALS") && (
+              <div className="bg-surface-white border border-border rounded-xl p-5 shadow-sm space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-extrabold text-text-primary flex items-center gap-2">
+                    <IconFileText className="h-4.5 w-4.5 text-blue-600" />
+                    Proposals ({filteredProposals.length})
+                  </h4>
+                  <span className="text-[10px] font-extrabold text-text-secondary uppercase tracking-wider">
+                    Project Pitches
+                  </span>
+                </div>
+
+                {filteredProposals.length > 0 ? (
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {filteredProposals.map((prop) => (
+                      <div key={prop.id} className="p-3.5 rounded-xl bg-surface-page/50 border border-border/60 hover:border-blue-500/30 transition-all flex flex-col justify-between gap-3">
+                        <div>
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-extrabold text-text-primary text-xs truncate">
+                              {prop.title || prop.number}
+                            </span>
+                            <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase bg-blue-50 text-blue-600">
+                              {prop.status}
+                            </span>
+                          </div>
+                          <p className="text-[10px] font-bold text-text-secondary mt-1">
+                            {prop.number} {prop.amount ? `• ${formatCurrency(Number(prop.amount))}` : ""}
+                          </p>
+                          {prop.validUntil && (
+                            <p className="text-[10px] text-text-secondary font-medium mt-0.5">
+                              Valid until: {formatDateShort(prop.validUntil)}
+                            </p>
+                          )}
+                        </div>
+
+                        {prop.pdfKey ? (
+                          <a
+                            href={getFileUrl(prop.pdfKey)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center justify-center gap-1.5 text-[11px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg py-1.5 transition-colors"
+                          >
+                            <IconDownload className="h-3.5 w-3.5" /> View Proposal PDF
+                          </a>
+                        ) : (
+                          <span className="text-[10px] text-text-secondary/70 italic text-center">PDF generated in system</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="py-6 text-center text-text-secondary/70 text-xs italic bg-surface-page/30 border border-dashed border-border/60 rounded-xl">
+                    No proposals attached to this project yet.
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 3. AGREEMENTS */}
+            {(docCategory === "ALL" || docCategory === "AGREEMENTS") && (
+              <div className="bg-surface-white border border-border rounded-xl p-5 shadow-sm space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-extrabold text-text-primary flex items-center gap-2">
+                    <IconFileCheck className="h-4.5 w-4.5 text-purple-600" />
+                    Agreements & Contracts ({filteredAgreements.length})
+                  </h4>
+                  <span className="text-[10px] font-extrabold text-text-secondary uppercase tracking-wider">
+                    Legal & Terms
+                  </span>
+                </div>
+
+                {filteredAgreements.length > 0 ? (
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {filteredAgreements.map((agr) => (
+                      <div key={agr.id} className="p-3.5 rounded-xl bg-surface-page/50 border border-border/60 hover:border-purple-500/30 transition-all flex flex-col justify-between gap-3">
+                        <div>
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-extrabold text-text-primary text-xs truncate">
+                              {agr.title || agr.number}
+                            </span>
+                            <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase bg-purple-50 text-purple-600">
+                              {agr.status}
+                            </span>
+                          </div>
+                          <p className="text-[10px] font-bold text-text-secondary mt-1">
+                            {agr.number}
+                          </p>
+                          {agr.effectiveDate && (
+                            <p className="text-[10px] text-text-secondary font-medium mt-0.5">
+                              Effective: {formatDateShort(agr.effectiveDate)}
+                            </p>
+                          )}
+                        </div>
+
+                        {agr.pdfKey ? (
+                          <a
+                            href={getFileUrl(agr.pdfKey)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center justify-center gap-1.5 text-[11px] font-bold text-purple-600 bg-purple-50 hover:bg-purple-100 rounded-lg py-1.5 transition-colors"
+                          >
+                            <IconDownload className="h-3.5 w-3.5" /> View Agreement PDF
+                          </a>
+                        ) : (
+                          <span className="text-[10px] text-text-secondary/70 italic text-center">PDF document in system</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="py-6 text-center text-text-secondary/70 text-xs italic bg-surface-page/30 border border-dashed border-border/60 rounded-xl">
+                    No agreements or contracts for this project.
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 4. QUOTATIONS */}
+            {(docCategory === "ALL" || docCategory === "QUOTATIONS") && (
+              <div className="bg-surface-white border border-border rounded-xl p-5 shadow-sm space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-extrabold text-text-primary flex items-center gap-2">
+                    <IconReceipt className="h-4.5 w-4.5 text-amber-600" />
+                    Quotations ({filteredQuotations.length})
+                  </h4>
+                  <span className="text-[10px] font-extrabold text-text-secondary uppercase tracking-wider">
+                    Cost Estimates
+                  </span>
+                </div>
+
+                {filteredQuotations.length > 0 ? (
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {filteredQuotations.map((qtn) => (
+                      <div key={qtn.id} className="p-3.5 rounded-xl bg-surface-page/50 border border-border/60 hover:border-amber-500/30 transition-all flex flex-col justify-between gap-3">
+                        <div>
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-extrabold text-text-primary text-xs">
+                              {qtn.number}
+                            </span>
+                            <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase bg-amber-50 text-amber-600">
+                              {qtn.status}
+                            </span>
+                          </div>
+                          <p className="text-lg font-black text-amber-600 mt-1">
+                            {formatCurrency(Number(qtn.total))}
+                          </p>
+                          <p className="text-[10px] text-text-secondary font-medium mt-0.5">
+                            Issued: {formatDateShort(qtn.issueDate)}
+                          </p>
+                        </div>
+
+                        {qtn.pdfKey ? (
+                          <a
+                            href={getFileUrl(qtn.pdfKey)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center justify-center gap-1.5 text-[11px] font-bold text-amber-600 bg-amber-50 hover:bg-amber-100 rounded-lg py-1.5 transition-colors"
+                          >
+                            <IconDownload className="h-3.5 w-3.5" /> View Quotation PDF
+                          </a>
+                        ) : (
+                          <span className="text-[10px] text-text-secondary/70 italic text-center">PDF quotation file</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="py-6 text-center text-text-secondary/70 text-xs italic bg-surface-page/30 border border-dashed border-border/60 rounded-xl">
+                    No quotations generated for this project yet.
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 5. UPLOADED FILES & ASSETS */}
+            {(docCategory === "ALL" || docCategory === "FILES") && (
+              <div className="bg-surface-white border border-border rounded-xl p-5 shadow-sm space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-extrabold text-text-primary flex items-center gap-2">
+                    <IconCloudUpload className="h-4.5 w-4.5 text-brand-orange" />
+                    Uploaded Files & Project Assets ({filteredUploadedFiles.length})
+                  </h4>
+                  <span className="text-[10px] font-extrabold text-text-secondary uppercase tracking-wider">
+                    Assets & Specs
+                  </span>
+                </div>
+
+                {filteredUploadedFiles.length > 0 ? (
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {filteredUploadedFiles.map((file) => (
+                      <div key={file.id} className="p-3.5 rounded-xl bg-surface-page/50 border border-border/60 hover:border-brand-orange/30 transition-all flex flex-col justify-between gap-3">
+                        <div className="flex items-start gap-3">
+                          <div className="w-9 h-9 rounded-xl bg-brand-orange-tint/15 text-brand-orange flex items-center justify-center shrink-0">
+                            {file.type === "DESIGNS" ? (
+                              <IconPhoto className="h-5 w-5" />
+                            ) : file.type === "LOGOS" ? (
+                              <IconSparkles className="h-5 w-5" />
+                            ) : (
+                              <IconFileText className="h-5 w-5" />
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <h5 className="font-extrabold text-text-primary text-xs truncate" title={file.name}>
+                              {file.name}
+                            </h5>
+                            <p className="text-[10px] font-semibold text-text-secondary mt-0.5">
+                              {file.type} • {formatBytes(file.size || 0)}
+                            </p>
+                            <p className="text-[9.5px] text-text-secondary/70 font-medium mt-0.5">
+                              Uploaded {formatDateShort(file.createdAt)} {file.uploadedBy?.name ? `by ${file.uploadedBy.name}` : ""}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 pt-2 border-t border-border/40">
+                          <a
+                            href={getFileUrl(file.r2Key)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex-1 inline-flex items-center justify-center gap-1 text-[11px] font-bold text-text-primary bg-surface-white hover:bg-surface-page border border-border rounded-lg py-1 transition-colors"
+                          >
+                            <IconExternalLink className="h-3.5 w-3.5 text-brand-orange" /> Open File
+                          </a>
+                          <button
+                            onClick={() => handleDocDelete(file.id)}
+                            className="p-1 rounded-lg text-rose-500 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-all cursor-pointer"
+                            title="Delete File"
+                          >
+                            <IconTrash className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="py-6 text-center text-text-secondary/70 text-xs italic bg-surface-page/30 border border-dashed border-border/60 rounded-xl">
+                    No uploaded assets or files attached to this project.
+                  </div>
+                )}
               </div>
             )}
           </div>

@@ -1,0 +1,55 @@
+export enum PaymentStatus {
+  PENDING = "PENDING",
+  COMPLETED = "COMPLETED",
+  FAILED = "FAILED",
+  REFUNDED = "REFUNDED",
+}
+
+export enum PaymentMethod {
+  BANK_TRANSFER = "BANK_TRANSFER",
+  UPI = "UPI",
+  CASH = "CASH",
+  CHEQUE = "CHEQUE",
+  CARD = "CARD",
+  OTHER = "OTHER",
+}
+
+export enum ExpenseCategory {
+  SOFTWARE = "SOFTWARE",
+  HOSTING = "HOSTING",
+  DOMAINS = "DOMAINS",
+  MARKETING = "MARKETING",
+  OFFICE = "OFFICE",
+  TRAVEL = "TRAVEL",
+  TEAM_PAYMENTS = "TEAM_PAYMENTS",
+  OTHER = "OTHER",
+}
+
+export enum ProjectStatus {
+  NEW = "NEW",
+  ONGOING = "ONGOING",
+  REVIEW = "REVIEW",
+  COMPLETED = "COMPLETED",
+  ON_HOLD = "ON_HOLD",
+  CANCELLED = "CANCELLED",
+}
+
+export enum LeadStage {
+  NEW = "NEW",
+  CONTACTED = "CONTACTED",
+  QUALIFIED = "QUALIFIED",
+  PROPOSAL_SENT = "PROPOSAL_SENT",
+  NEGOTIATION = "NEGOTIATION",
+  WON = "WON",
+  LOST = "LOST",
+}
+
+export enum DocumentType {
+  PROPOSAL = "PROPOSAL",
+  AGREEMENT = "AGREEMENT",
+  INVOICE = "INVOICE",
+  QUOTATION = "QUOTATION",
+  RECEIPT = "RECEIPT",
+  UPLOAD = "UPLOAD",
+  OTHER = "OTHER",
+}

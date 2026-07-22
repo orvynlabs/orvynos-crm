@@ -1,4 +1,4 @@
-@import "tailwindcss" source("../..");
+@import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
@@ -111,6 +111,8 @@ body {
   font-family: var(--font-sans), sans-serif;
   background-color: var(--background);
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 @theme inline {
@@ -209,13 +211,64 @@ body {
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    -webkit-tap-highlight-color: transparent;
   }
   body {
     @apply bg-background text-foreground font-sans;
+    overscroll-behavior-y: none;
   }
   html {
     @apply font-sans;
+    scroll-behavior: smooth;
   }
+}
+
+/* Custom slim scrollbar for modern feel */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+/* Mobile Touch & GPU Performance Utilities */
+.gpu-accelerate {
+  transform: translateZ(0);
+  will-change: transform, opacity;
+}
+
+.touch-bounce:active {
+  transform: scale(0.97);
+  transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Marquee Animation for Co-Founders showcase ── */
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+  animation: marquee 18s linear infinite;
+}
+
+
+@keyframes progress-slide {
+  0% { transform: translateX(-100%); }
+  50% { transform: translateX(-20%); }
+  100% { transform: translateX(100%); }
+}
+
+.animate-progress-slide {
+  animation: progress-slide 1.8s infinite ease-in-out;
 }
 
 @media print {

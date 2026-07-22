@@ -1,13 +1,15 @@
 "use server";
 
 import { prisma } from "@/lib/db";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 export type CreateClientInput = {
   name: string;
+  logo?: string;
   contactName?: string;
   email?: string;
   phone?: string;
+  secondaryPhone?: string;
   website?: string;
   address?: string;
   city?: string;
@@ -24,9 +26,11 @@ export async function createClient(data: CreateClientInput) {
     await prisma.client.create({
       data: {
         name: data.name,
+        logo: data.logo || null,
         contactName: data.contactName || null,
         email: data.email || null,
         phone: data.phone || null,
+        secondaryPhone: data.secondaryPhone || null,
         website: data.website || null,
         address: data.address || null,
         city: data.city || null,
@@ -36,6 +40,8 @@ export async function createClient(data: CreateClientInput) {
     });
 
     revalidatePath("/clients");
+    revalidateTag("clients");
+    revalidateTag("dashboard-metrics");
     return { success: true };
   } catch (error) {
     console.error("Failed to create client:", error);
@@ -53,9 +59,11 @@ export async function updateClient(id: string, data: CreateClientInput & { notes
       where: { id },
       data: {
         name: data.name,
+        logo: data.logo || null,
         contactName: data.contactName || null,
         email: data.email || null,
         phone: data.phone || null,
+        secondaryPhone: data.secondaryPhone || null,
         website: data.website || null,
         address: data.address || null,
         city: data.city || null,

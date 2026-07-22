@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { PrismaClient, ProjectStatus, LeadStage, LeadActivityType, PaymentStatus, PaymentMethod, ExpenseCategory } from '../src/generated/prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
@@ -27,6 +28,9 @@ async function main() {
   await prisma.project.deleteMany();
   await prisma.clientNote.deleteMany();
   await prisma.client.deleteMany();
+  if ((prisma as any).dailyUpdate) {
+    await (prisma as any).dailyUpdate.deleteMany();
+  }
   await prisma.teamMember.deleteMany();
   await prisma.user.deleteMany();
 
@@ -36,6 +40,7 @@ async function main() {
     {
       name: 'Asif',
       email: 'asif@orvynlabs.com',
+      image: '/avatars/asif.jpg',
       role: 'owner',
       title: 'Co-founder / Tech Lead',
       skills: ['React', 'Next.js', 'Node.js', 'TypeScript', 'Prisma'],
@@ -45,6 +50,7 @@ async function main() {
     {
       name: 'Mubashir',
       email: 'mubashir@orvynlabs.com',
+      image: '/avatars/mubashir.png',
       role: 'owner',
       title: 'Co-founder / Creative Director',
       skills: ['UI/UX Design', 'Figma', 'Tailwind CSS', 'Branding', 'Framer Motion'],
@@ -54,6 +60,7 @@ async function main() {
     {
       name: 'Adhil',
       email: 'adhil@orvynlabs.com',
+      image: '/avatars/adhil.png',
       role: 'owner',
       title: 'Co-founder / Full-stack Developer',
       skills: ['PostgreSQL', 'Express', 'Next.js', 'Node.js', 'Docker'],
@@ -63,6 +70,7 @@ async function main() {
     {
       name: 'Niyaf',
       email: 'niyaf@orvynlabs.com',
+      image: '/avatars/niyaf.png',
       role: 'owner',
       title: 'Co-founder / Operations Lead',
       skills: ['Project Management', 'Client Relations', 'QA Testing', 'Git', 'Agile'],
@@ -81,6 +89,7 @@ async function main() {
         email: f.email,
         passwordHash: DUMMY_PASSWORD_HASH,
         role: f.role,
+        image: f.image,
       }
     });
 
@@ -574,6 +583,73 @@ async function main() {
 
   console.log(`Seeded ${leadsData.length} leads.`);
   
+  console.log('Seeding documents...');
+
+  const docsData = [
+    {
+      name: 'Figma Web Mockup UI.fig',
+      type: 'DESIGNS' as const,
+      r2Key: 'https://figma.com/file/mockup-design-example',
+      mimeType: 'image/png',
+      size: 4529012,
+      projectIndex: 0,
+      clientIndex: 0,
+    },
+    {
+      name: 'TechVibe_Brand_Logo_SVG.svg',
+      type: 'LOGOS' as const,
+      r2Key: 'https://orvynlabs.r2.dev/techvibe-logo.svg',
+      mimeType: 'image/svg+xml',
+      size: 15409,
+      projectIndex: 0,
+      clientIndex: 0,
+    },
+    {
+      name: 'Signed_Project_Agreement.pdf',
+      type: 'PDFS' as const,
+      r2Key: 'https://orvynlabs.r2.dev/agreement-signed-july-2026.pdf',
+      mimeType: 'application/pdf',
+      size: 104230,
+      projectIndex: 2,
+      clientIndex: 2,
+    },
+    {
+      name: 'AI_Analytical_Core_SpecSheet.docx',
+      type: 'DOCUMENTS' as const,
+      r2Key: 'https://orvynlabs.r2.dev/spec-sheet-portfolio.docx',
+      mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      size: 24500,
+      projectIndex: 4,
+      clientIndex: 2,
+    },
+    {
+      name: 'Client_Requirements_Survey.pdf',
+      type: 'CLIENT_FILES' as const,
+      r2Key: 'https://orvynlabs.r2.dev/onboarding-feedback.pdf',
+      mimeType: 'application/pdf',
+      size: 89012,
+      projectIndex: 3,
+      clientIndex: 0,
+    }
+  ];
+
+  for (const d of docsData) {
+    await prisma.document.create({
+      data: {
+        name: d.name,
+        type: d.type as any,
+        r2Key: d.r2Key,
+        mimeType: d.mimeType,
+        size: d.size,
+        projectId: seededProjects[d.projectIndex].id,
+        clientId: seededClients[d.clientIndex].id,
+        uploadedById: seededUsers[3].id, // Niyaf
+      }
+    });
+  }
+
+  console.log(`Seeded ${docsData.length} documents.`);
+
   console.log('Database seeding successfully completed!');
 }
 

@@ -1,8 +1,6 @@
 import { prisma } from "@/lib/db";
 import { NewProjectClient } from "./new-project-client";
 
-export const revalidate = 0; // Disable caching
-
 export default async function NewProjectPage() {
 
   // Fetch clients and team members concurrently to optimize database latency

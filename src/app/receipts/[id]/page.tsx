@@ -108,7 +108,8 @@ export default async function ReceiptPrintPage({ params }: PageProps) {
 
   return (
     <>
-      <style dangerouslySetInnerHTML={{ __html: `
+      <style dangerouslySetInnerHTML={{
+        __html: `
         :root {
           color-scheme: light;
           --brand: #F1441E;
@@ -371,9 +372,9 @@ export default async function ReceiptPrintPage({ params }: PageProps) {
                     <path id="arcBottom" d="M 118,70 A 48,48 0 0,1 22,70" />
                   </defs>
                   {/* rings */}
-                  <circle cx="70" cy="70" r="66" fill="none" stroke="#F1441E" strokeWidth="2"/>
-                  <circle cx="70" cy="70" r="60" fill="none" stroke="#F1441E" strokeWidth="0.8" strokeDasharray="3 2"/>
-                  <circle cx="70" cy="70" r="41" fill="none" stroke="#F1441E" strokeWidth="1"/>
+                  <circle cx="70" cy="70" r="66" fill="none" stroke="#F1441E" strokeWidth="2" />
+                  <circle cx="70" cy="70" r="60" fill="none" stroke="#F1441E" strokeWidth="0.8" strokeDasharray="3 2" />
+                  <circle cx="70" cy="70" r="41" fill="none" stroke="#F1441E" strokeWidth="1" />
                   {/* top text: ORVYN LABS */}
                   <text fill="#F1441E" fontFamily="Manrope, 'Segoe UI', sans-serif" fontSize="10" fontWeight="700" letterSpacing="2.5">
                     <textPath href="#arcTop" startOffset="50%" textAnchor="middle">ORVYN LABS</textPath>

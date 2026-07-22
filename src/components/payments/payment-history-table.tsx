@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { IconDownload, IconCheck, IconClock, IconAlertCircle, IconArrowDownLeft, IconLoader2 } from "@tabler/icons-react";
-import { PaymentMethod, PaymentStatus } from "@/generated/prisma/client";
+import { PaymentMethod, PaymentStatus } from "@/lib/enums";
 
 export type PaymentRow = {
   id: string;

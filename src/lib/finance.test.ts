@@ -9,6 +9,8 @@ import {
   getTotalRevenue,
   getTotalExpenses,
   getNetProfit,
+  getTeamMemberTotalPaid,
+  getTeamMemberPendingAmount,
 } from './finance';
 
 test('Financial Calculations Unit Tests', async (t) => {
@@ -96,5 +98,29 @@ test('Financial Calculations Unit Tests', async (t) => {
 
     const profit = await getNetProfit();
     assert.strictEqual(profit, 1200); // 2000 - 800 = 1200
+  });
+
+  await t.test('getTeamMemberTotalPaid returns correct sum for completed payments', async () => {
+    mockPrisma.teamPayment = mockPrisma.teamPayment || {};
+    mockPrisma.teamPayment.aggregate = async (args: any) => {
+      assert.strictEqual(args.where.teamMemberId, 'tm-123');
+      assert.strictEqual(args.where.status, 'COMPLETED');
+      return { _sum: { amount: 45000 } };
+    };
+
+    const totalPaid = await getTeamMemberTotalPaid('tm-123');
+    assert.strictEqual(totalPaid, 45000);
+  });
+
+  await t.test('getTeamMemberPendingAmount returns correct sum for pending payments', async () => {
+    mockPrisma.teamPayment = mockPrisma.teamPayment || {};
+    mockPrisma.teamPayment.aggregate = async (args: any) => {
+      assert.strictEqual(args.where.teamMemberId, 'tm-123');
+      assert.strictEqual(args.where.status, 'PENDING');
+      return { _sum: { amount: 15000 } };
+    };
+
+    const pendingAmount = await getTeamMemberPendingAmount('tm-123');
+    assert.strictEqual(pendingAmount, 15000);
   });
 });

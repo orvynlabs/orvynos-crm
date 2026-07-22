@@ -83,6 +83,11 @@ enum DocumentType {
   RECEIPT
   UPLOAD
   OTHER
+  DESIGNS
+  PDFS
+  LOGOS
+  DOCUMENTS
+  CLIENT_FILES
 }
 
 enum ProposalStatus {
@@ -140,18 +145,35 @@ model User {
 }
 
 model TeamMember {
-  id        String   @id @default(cuid())
-  userId    String   @unique
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title     String? // e.g. "Co-founder / Full-stack Dev"
+  id        String        @id @default(cuid())
+  userId    String        @unique
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String?       // e.g. "Co-founder / Full-stack Dev"
   skills    String[]
   phone     String?
   bio       String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  status    String        @default("AVAILABLE") // AVAILABLE, BUSY, ON_LEAVE
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
 
-  assignments ProjectMember[]
-  payments    TeamPayment[]
+  assignments  ProjectMember[]
+  payments     TeamPayment[]
+  dailyUpdates DailyUpdate[]
+}
+
+model DailyUpdate {
+  id             String     @id @default(cuid())
+  teamMemberId   String
+  teamMember     TeamMember @relation(fields: [teamMemberId], references: [id], onDelete: Cascade)
+  completedToday String
+  workingOnNext  String
+  blockers       String?
+  date           DateTime   @default(now())
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  @@index([teamMemberId])
+  @@index([date])
 }
 
 // ---------------------------------------------------------------------------
@@ -180,6 +202,7 @@ model Lead {
   activities LeadActivity[]
 
   @@index([stage])
+  @@index([stage, sortOrder(sort: Asc)])
   @@index([followUpAt])
 }
 
@@ -203,9 +226,11 @@ model LeadActivity {
 model Client {
   id          String   @id @default(cuid())
   name        String // company name
+  logo        String? // optional company logo URL / base64 / path
   contactName String?
   email       String?
   phone       String?
+  secondaryPhone String?
   gstin       String? // GST number, optional
   website     String?
   address     String?
@@ -273,6 +298,7 @@ model Project {
 
   @@index([clientId])
   @@index([status])
+  @@index([clientId, status])
 }
 
 model ProjectNote {
@@ -336,6 +362,9 @@ model Payment {
   @@index([projectId])
   @@index([clientId])
   @@index([paidAt])
+  @@index([clientId, paidAt(sort: Desc)])
+  @@index([projectId, paidAt(sort: Desc)])
+  @@index([status, paidAt(sort: Desc)])
 }
 
 model Expense {
@@ -353,6 +382,8 @@ model Expense {
 
   @@index([category])
   @@index([date])
+  @@index([projectId, date(sort: Desc)])
+  @@index([category, date(sort: Desc)])
 }
 
 // ---------------------------------------------------------------------------

@@ -1,8 +1,8 @@
 "use server";
 
-import { prisma } from "@/lib/db";
-import { revalidatePath } from "next/cache";
-import { ExpenseCategory } from "@/generated/prisma/client";
+import { prisma, withRetry } from "@/lib/db";
+import { revalidatePath, revalidateTag } from "next/cache";
+import { ExpenseCategory } from "@/lib/enums";
 
 export type ExpenseInput = {
   title: string;
@@ -21,20 +21,25 @@ export async function createExpense(data: ExpenseInput) {
 
     const expenseDate = data.date ? new Date(data.date) : new Date();
 
-    await prisma.expense.create({
-      data: {
-        title: data.title,
-        category: data.category,
-        amount: data.amount,
-        date: expenseDate,
-        notes: data.notes || null,
-        projectId: data.projectId || null,
-      },
-    });
+    await withRetry(() =>
+      prisma.expense.create({
+        data: {
+          title: data.title,
+          category: data.category,
+          amount: data.amount,
+          date: expenseDate,
+          notes: data.notes || null,
+          projectId: data.projectId || null,
+        },
+      })
+    );
 
+    revalidateTag("expenses");
+    revalidateTag("dashboard-metrics");
     revalidatePath("/expenses");
     if (data.projectId) {
       revalidatePath(`/projects/${data.projectId}`);
+      revalidateTag(`project-${data.projectId}`);
     }
 
     return { success: true };

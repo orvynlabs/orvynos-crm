@@ -32,9 +32,11 @@ type Project = {
 type Client = {
   id: string;
   name: string;
+  logo: string | null;
   contactName: string | null;
   email: string | null;
   phone: string | null;
+  secondaryPhone: string | null;
   website: string | null;
   address: string | null;
   city: string | null;
@@ -97,10 +99,12 @@ const getStatusConfig = (status: string) => {
     default:
       return {
         badge: "bg-stone-50 text-stone-600 dark:bg-stone-900/40 dark:text-stone-400 border border-stone-150",
-        dot: "bg-stone-405",
+        dot: "bg-stone-400",
       };
   }
 };
+
+
 
 export function ClientsClient({ initialClients, metrics }: ClientsClientProps) {
   const [searchQuery, setSearchQuery] = useState("");
@@ -110,15 +114,15 @@ export function ClientsClient({ initialClients, metrics }: ClientsClientProps) {
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 6;
+  const itemsPerPage = 9;
 
   // Calculate relative date strings
   const getRelativeTime = (dateString: string) => {
     const diffTime = Math.abs(Date.now() - new Date(dateString).getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    if (diffDays <= 1) return "Added today";
-    if (diffDays === 2) return "Added yesterday";
-    return `Added ${diffDays} days ago`;
+    if (diffDays <= 1) return "Today";
+    if (diffDays === 2) return "Yesterday";
+    return `${diffDays}d ago`;
   };
 
   // Helper for avatar initials
@@ -214,15 +218,15 @@ export function ClientsClient({ initialClients, metrics }: ClientsClientProps) {
   };
 
   return (
-    <div className="space-y-6 font-sans text-left">
+    <div className="space-y-5 font-sans text-left">
       {/* Header bar */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="space-y-1">
-          <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight text-text-primary">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+        <div>
+          <h1 className="text-lg md:text-xl font-black tracking-tight text-text-primary">
             Clients
           </h1>
-          <p className="text-sm md:text-[15px] text-text-secondary font-medium">
-            View all client accounts, manage contact details, and jump directly into active projects.
+          <p className="text-[11px] text-text-secondary mt-0.5 font-medium">
+            Manage client accounts, contact details, and linked projects.
           </p>
         </div>
 
@@ -230,18 +234,18 @@ export function ClientsClient({ initialClients, metrics }: ClientsClientProps) {
         <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
           <SheetTrigger
             render={
-              <Button className="font-bold text-xs bg-brand-orange hover:bg-brand-orange-hover text-white py-2.5 px-4 rounded-lg flex items-center gap-1.5 shadow-none border-0 min-h-[40px] cursor-pointer active:scale-[0.98] transition-all">
-                <IconPlus className="h-4.5 w-4.5" stroke={2.5} /> Add Client
+              <Button className="font-bold text-xs bg-brand-orange hover:bg-brand-orange-hover text-white py-2 px-4 rounded-lg flex items-center gap-1.5 shadow-xs border-0 h-8 cursor-pointer active:scale-[0.98] transition-all">
+                <IconPlus className="h-3.5 w-3.5" stroke={2.5} /> Add Client
               </Button>
             }
           />
-          <SheetContent className="w-full max-w-[450px] p-6 bg-surface-white border-l border-border h-full flex flex-col justify-between overflow-y-auto">
+          <SheetContent className="w-full max-w-[420px] p-5 bg-surface-white border-l border-border h-full flex flex-col justify-between overflow-y-auto">
             <div className="space-y-6">
               <SheetHeader>
-                <SheetTitle className="text-lg font-bold text-text-primary text-left">
+                <SheetTitle className="text-base font-bold text-text-primary text-left">
                   Create New Client
                 </SheetTitle>
-                <SheetDescription className="text-xs text-text-secondary mt-1 text-left">
+                <SheetDescription className="text-xs text-text-secondary mt-0.5 text-left">
                   Add a new client profile to Orvynos CRM. Fill out the details below.
                 </SheetDescription>
               </SheetHeader>
@@ -258,101 +262,33 @@ export function ClientsClient({ initialClients, metrics }: ClientsClientProps) {
         </Sheet>
       </div>
 
-      {/* METRICS ROW - Premium Cards with Icons and Simple Descriptions */}
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-        {/* Total clients */}
-        <div className="bg-surface-white border border-border rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow duration-250 flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] md:text-[11px] font-extrabold text-text-secondary uppercase tracking-wider block">
-              Total clients
-            </span>
-            <div className="w-8 h-8 rounded-lg bg-orange-50 text-brand-orange flex items-center justify-center border border-orange-100">
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4.5 h-4.5" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" fill="none" strokeLinecap="round" strokeLinejoin="round">
-                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                <path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0" />
-                <path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" />
-              </svg>
-            </div>
-          </div>
-          <span className="text-2xl md:text-3xl font-black text-stone-900 tracking-tight mt-3 block">
-            {metrics.totalClients}
-          </span>
-          <p className="text-[10px] md:text-[11px] text-stone-400 font-semibold mt-2 border-t border-stone-100 pt-2 leading-relaxed">
-            Registered corporate partners.
-          </p>
-        </div>
 
-        {/* Total projects */}
-        <div className="bg-surface-white border border-border rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow duration-250 flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] md:text-[11px] font-extrabold text-text-secondary uppercase tracking-wider block">
-              Total projects
-            </span>
-            <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100">
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4.5 h-4.5" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" fill="none" strokeLinecap="round" strokeLinejoin="round">
-                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                <path d="M5 19l2.757 -7.351a1 1 0 0 1 .936 -.649h12.307a1 1 0 0 1 .986 1.164l-.996 5.211a2 2 0 0 1 -1.972 1.625h-12.022a2 2 0 0 1 -2 -2z" />
-                <path d="M5 14v-6a2 2 0 0 1 2 -2h3.586a1 1 0 0 1 .707 .293l2.414 2.414a1 1 0 0 0 .707 .293h3.586a2 2 0 0 1 2 2v2" />
-              </svg>
-            </div>
-          </div>
-          <span className="text-2xl md:text-3xl font-black text-stone-900 tracking-tight mt-3 block">
-            {metrics.totalProjects}
-          </span>
-          <p className="text-[10px] md:text-[11px] text-stone-400 font-semibold mt-2 border-t border-stone-100 pt-2 leading-relaxed">
-            All registered tasks & outputs.
-          </p>
-        </div>
 
-        {/* Ongoing */}
-        <div className="bg-surface-white border border-border rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow duration-250 flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] md:text-[11px] font-extrabold text-text-secondary uppercase tracking-wider block">
-              Ongoing
-            </span>
-            <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4.5 h-4.5" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" fill="none" strokeLinecap="round" strokeLinejoin="round">
-                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                <path d="M9 4.55a8 8 0 0 1 6 14.9a8 8 0 0 1 -12 -6.9a8 8 0 0 1 6 -8" />
-                <path d="M12 7v5l3 3" />
-              </svg>
+      {/* METRICS ROW */}
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+        {[
+          { label: "Total Clients", value: metrics.totalClients, color: "bg-orange-50 text-brand-orange border-orange-100", desc: "Registered accounts" },
+          { label: "Total Projects", value: metrics.totalProjects, color: "bg-blue-50 text-blue-600 border-blue-100", desc: "Contracts across all" },
+          { label: "Active", value: metrics.ongoingProjects, color: "bg-emerald-50 text-emerald-600 border-emerald-100", desc: "In active execution" },
+          { label: "Completed", value: metrics.completedProjects, color: "bg-purple-50 text-purple-600 border-purple-100", desc: "Delivered projects" },
+        ].map((m) => (
+          <div key={m.label} className="p-3.5 md:p-4 bg-surface-white border border-border rounded-xl flex items-center gap-3.5 shadow-2xs hover:shadow-xs transition-shadow">
+            <div className={`w-10 h-10 rounded-lg ${m.color} flex items-center justify-center border shrink-0`}>
+              <span className="text-base md:text-lg font-black">{m.value}</span>
+            </div>
+            <div className="min-w-0">
+              <span className="text-[11px] font-bold uppercase text-text-secondary tracking-wider block truncate">{m.label}</span>
+              <span className="text-[11px] text-text-secondary/70 font-medium truncate block">{m.desc}</span>
             </div>
           </div>
-          <span className="text-2xl md:text-3xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight mt-3 block">
-            {metrics.ongoingProjects}
-          </span>
-          <p className="text-[10px] md:text-[11px] text-stone-400 font-semibold mt-2 border-t border-stone-100 pt-2 leading-relaxed">
-            Active projects currently being built.
-          </p>
-        </div>
-
-        {/* Completed */}
-        <div className="bg-surface-white border border-border rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow duration-250 flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] md:text-[11px] font-extrabold text-text-secondary uppercase tracking-wider block">
-              Completed
-            </span>
-            <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100">
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4.5 h-4.5" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" fill="none" strokeLinecap="round" strokeLinejoin="round">
-                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                <path d="M5 12l5 5l10 -10" />
-              </svg>
-            </div>
-          </div>
-          <span className="text-2xl md:text-3xl font-black text-blue-600 dark:text-blue-400 tracking-tight mt-3 block">
-            {metrics.completedProjects}
-          </span>
-          <p className="text-[10px] md:text-[11px] text-stone-400 font-semibold mt-2 border-t border-stone-100 pt-2 leading-relaxed">
-            Finished projects successfully delivered.
-          </p>
-        </div>
+        ))}
       </div>
 
-      {/* ACTION BAR - Unified Modern Dock Style */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-surface-white border border-border rounded-xl p-3.5 shadow-sm">
+      {/* ACTION BAR */}
+      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between bg-surface-white border border-border rounded-xl p-3 shadow-2xs">
         {/* Search */}
-        <div className="relative w-full sm:max-w-[320px]">
-          <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-text-secondary" />
+        <div className="relative w-full sm:max-w-[280px]">
+          <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-secondary" />
           <input
             type="text"
             placeholder="Search by name or phone..."
@@ -361,95 +297,119 @@ export function ClientsClient({ initialClients, metrics }: ClientsClientProps) {
               setSearchQuery(e.target.value);
               setCurrentPage(1);
             }}
-            className="w-full pl-9.5 pr-4 h-9 bg-surface-page border border-border rounded-lg text-sm md:text-[15px] shadow-sm placeholder:text-text-secondary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-orange font-semibold"
+            className="w-full pl-9 pr-4 h-8 bg-surface-page border border-border rounded-lg text-base sm:text-xs shadow-2xs placeholder:text-text-secondary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-orange font-semibold"
           />
         </div>
 
         {/* Export buttons */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <Button
             variant="outline"
             size="sm"
             onClick={exportToCSV}
-            className="h-9 bg-surface-page border border-border hover:bg-surface-white text-xs md:text-sm font-bold px-4 rounded-lg flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-[0.98] transition-all"
+            className="h-8 bg-surface-page border border-border hover:bg-surface-white text-[11px] font-bold px-3 rounded-lg flex items-center gap-1 cursor-pointer shadow-2xs active:scale-[0.98] transition-all"
           >
-            <IconDownload className="h-4 w-4 text-text-secondary" /> CSV
+            <IconDownload className="h-3.5 w-3.5 text-text-secondary" /> CSV
           </Button>
           <Button
             variant="outline"
             size="sm"
             onClick={exportToJSON}
-            className="h-9 bg-surface-page border border-border hover:bg-surface-white text-xs md:text-sm font-bold px-4 rounded-lg flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-[0.98] transition-all"
+            className="h-8 bg-surface-page border border-border hover:bg-surface-white text-[11px] font-bold px-3 rounded-lg flex items-center gap-1 cursor-pointer shadow-2xs active:scale-[0.98] transition-all"
           >
-            <IconDownload className="h-4 w-4 text-text-secondary" /> JSON
+            <IconDownload className="h-3.5 w-3.5 text-text-secondary" /> JSON
           </Button>
         </div>
       </div>
 
-      {/* CARD LIST GRID - Redesigned Modern Cards with Dynamic Gradients */}
+      {/* CARD LIST GRID */}
       {paginatedClients.length > 0 ? (
-        <div className="grid gap-5 md:grid-cols-2">
+        <div className="grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
           {paginatedClients.map((client) => {
             const clientInitials = getInitials(client.name);
             const avatarGrad = getAvatarGradient(client.name);
             return (
               <div
                 key={client.id}
-                className="bg-surface-white border border-border rounded-xl p-4.5 shadow-sm hover:shadow-md hover:border-brand-orange/30 transition-all duration-200 flex flex-col justify-between group/card"
+                className="bg-surface-white border border-border rounded-xl p-3 shadow-2xs hover:shadow-xs hover:border-brand-orange/30 transition-all duration-200 flex flex-col justify-between group/card"
               >
-                <Link href={`/clients/${client.id}`} className="block cursor-pointer">
+                <Link href={`/clients/${client.id}`} className="block cursor-pointer space-y-2">
                   {/* Client Info Header */}
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      {/* Initials Circle with Deterministic Premium Gradient */}
-                      <div className={`w-10 h-10 rounded-full bg-gradient-to-tr ${avatarGrad} flex items-center justify-center font-bold text-xs select-none transition-transform group-hover/card:scale-105 duration-300 shadow`}>
-                        {clientInitials}
-                      </div>
-                      <div className="space-y-0.5">
-                        <h4 className="font-extrabold text-stone-900 text-[14px] md:text-[16px] tracking-tight capitalize group-hover/card:text-brand-orange transition-colors">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      {/* Logo or Initials */}
+                      {client.logo ? (
+                        <img
+                          src={client.logo}
+                          alt={client.name}
+                          className="w-7 h-7 rounded-full object-cover border border-border/80 shrink-0 shadow-2xs"
+                          onError={(e) => {
+                            (e.target as HTMLElement).style.display = "none";
+                          }}
+                        />
+                      ) : (
+                        <div className={`w-7 h-7 rounded-full bg-gradient-to-tr ${avatarGrad} flex items-center justify-center font-bold text-[10px] select-none shrink-0 shadow-2xs`}>
+                          {clientInitials}
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <h4 className="font-bold text-stone-900 text-xs tracking-tight capitalize group-hover/card:text-brand-orange transition-colors truncate leading-tight">
                           {client.name}
                         </h4>
-                        {client.phone && (
-                          <p className="text-[10px] md:text-xs text-text-secondary font-semibold flex items-center gap-1">
-                            <IconPhone className="h-3.5 w-3.5 shrink-0 text-text-secondary/70" />
-                            {client.phone}
+                        {client.contactName && (
+                          <p className="text-[10px] text-text-secondary font-medium truncate leading-tight">
+                            {client.contactName}
                           </p>
                         )}
                       </div>
                     </div>
                     {/* Visual Chevron Link */}
-                    <div className="text-stone-400 group-hover/card:text-brand-orange p-1 rounded-full group-hover/card:bg-stone-50 transition-all duration-250">
-                      <IconChevronRight className="h-4 w-4" />
+                    <div className="text-stone-400 group-hover/card:text-brand-orange p-0.5 rounded-full group-hover/card:bg-stone-50 transition-all duration-200 shrink-0">
+                      <IconChevronRight className="h-3.5 w-3.5" />
                     </div>
                   </div>
 
+                  {/* Phone Numbers Bar */}
+                  {(client.phone || client.secondaryPhone) && (
+                    <div className="flex flex-wrap items-center gap-1 text-[10px] font-semibold text-text-secondary">
+                      {client.phone && (
+                        <span className="inline-flex items-center gap-0.5 bg-surface-page px-1.5 py-0.5 rounded border border-border/60">
+                          <IconPhone className="h-2.5 w-2.5 text-brand-orange" />
+                          <span>{client.phone}</span>
+                        </span>
+                      )}
+                      {client.secondaryPhone && (
+                        <span className="inline-flex items-center gap-0.5 bg-surface-page px-1.5 py-0.5 rounded border border-border/60 text-text-secondary/80">
+                          <IconPhone className="h-2.5 w-2.5 text-stone-400" />
+                          <span>{client.secondaryPhone}</span>
+                        </span>
+                      )}
+                    </div>
+                  )}
+
                   {/* Inner Panel for Projects */}
-                  <div className="bg-stone-50/70 border border-border/80 rounded-xl p-3.5 mt-3.5 space-y-2 group-hover/card:border-brand-orange-tint group-hover/card:bg-stone-50/30 transition-all duration-200">
-                    <div className="flex items-center gap-1.5 text-[9px] md:text-[10.5px] font-extrabold text-text-secondary uppercase tracking-widest border-b border-stone-200/40 pb-1.5">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 text-text-secondary/70" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" fill="none" strokeLinecap="round" strokeLinejoin="round">
-                        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                        <path d="M5 4h4l3 3h7a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-11a2 2 0 0 1 2 -2" />
-                      </svg>
-                      <span>
-                        {client.projects.length}{" "}
-                        {client.projects.length === 1 ? "project" : "projects"}
+                  <div className="bg-stone-50/60 border border-border/60 rounded-lg p-2 space-y-1 group-hover/card:border-brand-orange-tint transition-all duration-200">
+                    <div className="flex items-center justify-between text-[9px] font-extrabold text-text-secondary uppercase tracking-wider">
+                      <span>Projects</span>
+                      <span className="bg-surface-white px-1.5 py-0.5 rounded border border-border/60 font-bold text-text-primary text-[9px]">
+                        {client.projects.length}
                       </span>
                     </div>
 
                     {client.projects.length > 0 ? (
-                      <div className="divide-y divide-border/40">
+                      <div className="space-y-0.5">
                         {client.projects.slice(0, 2).map((proj) => {
                           const statusConf = getStatusConfig(proj.status);
                           return (
                             <div
                               key={proj.id}
-                              className="py-2 flex items-center justify-between text-xs md:text-[13.5px] gap-2"
+                              className="flex items-center justify-between gap-2 py-0.5"
                             >
-                              <span className="font-semibold text-stone-850 truncate flex-1 min-w-0">
+                              <span className="font-semibold text-stone-800 truncate flex-1 min-w-0 text-[10px]">
                                 {proj.name}
                               </span>
                               <span
-                                className={`inline-flex items-center gap-1 text-[9px] md:text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0 ${statusConf.badge}`}
+                                className={`inline-flex items-center gap-0.5 text-[8px] font-extrabold px-1.5 py-0.5 rounded-full uppercase tracking-wider shrink-0 ${statusConf.badge}`}
                               >
                                 <span className={`w-1 h-1 rounded-full ${statusConf.dot}`} />
                                 {proj.status.toLowerCase()}
@@ -458,35 +418,27 @@ export function ClientsClient({ initialClients, metrics }: ClientsClientProps) {
                           );
                         })}
                         {client.projects.length > 2 && (
-                          <div className="pt-2 text-right text-[10px] md:text-xs font-bold text-brand-orange group-hover/card:underline">
-                            + {client.projects.length - 2} more projects
+                          <div className="text-right text-[9px] font-bold text-brand-orange group-hover/card:underline">
+                            + {client.projects.length - 2} more
                           </div>
                         )}
                       </div>
                     ) : (
-                      <div className="py-2 flex items-center justify-center gap-1.5">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-stone-300" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" fill="none" strokeLinecap="round" strokeLinejoin="round">
-                          <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                          <path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0" />
-                          <path d="M12 9h.01" />
-                          <path d="M11 12h1v4h1" />
-                        </svg>
-                        <span className="text-[11px] text-stone-400 font-semibold italic">
-                          No projects registered
-                        </span>
+                      <div className="py-1 text-center text-[9px] text-stone-400 font-semibold italic">
+                        No active projects
                       </div>
                     )}
                   </div>
                 </Link>
 
-                {/* Footer details with active action effects */}
-                <div className="flex items-center justify-between text-xs text-text-secondary mt-4 pt-3.5 border-t border-border/60">
-                  <span className="font-medium text-[10px] md:text-xs text-stone-450">
+                {/* Compact Card Footer */}
+                <div className="flex items-center justify-between text-[9px] text-text-secondary mt-2 pt-2 border-t border-border/50">
+                  <span className="font-medium text-stone-400">
                     {getRelativeTime(client.createdAt)}
                   </span>
                   <Link
                     href={`/projects/new?clientId=${client.id}`}
-                    className="font-extrabold text-brand-orange hover:text-brand-orange-hover active:scale-[0.98] transition-all duration-150 text-[11px] md:text-[13px]"
+                    className="font-extrabold text-brand-orange hover:text-brand-orange-hover transition-colors text-[10px]"
                   >
                     + New Project
                   </Link>
@@ -496,12 +448,12 @@ export function ClientsClient({ initialClients, metrics }: ClientsClientProps) {
           })}
         </div>
       ) : (
-        <div className="bg-surface-white border border-border rounded-xl p-12 text-center shadow-sm">
-          <div className="inline-block p-3 bg-brand-orange-tint text-brand-orange rounded-full mb-3">
-            <IconAlertCircle className="h-6 w-6" />
+        <div className="bg-surface-white border border-border rounded-xl p-10 text-center shadow-2xs">
+          <div className="inline-block p-2.5 bg-brand-orange-tint text-brand-orange rounded-full mb-3">
+            <IconAlertCircle className="h-5 w-5" />
           </div>
-          <h3 className="text-sm font-bold text-text-primary">No clients found</h3>
-          <p className="text-xs text-text-secondary mt-1">
+          <h3 className="text-xs font-bold text-text-primary">No clients found</h3>
+          <p className="text-[11px] text-text-secondary mt-1">
             Try adjusting your search query or add a new client profile.
           </p>
         </div>
@@ -509,20 +461,20 @@ export function ClientsClient({ initialClients, metrics }: ClientsClientProps) {
 
       {/* PAGINATION FOOTER */}
       {filteredClients.length > itemsPerPage && (
-        <div className="flex items-center justify-between pt-4 border-t border-border/60 select-none">
-          <span className="text-xs text-text-secondary font-medium">
+        <div className="flex items-center justify-between pt-3 border-t border-border/60 select-none">
+          <span className="text-[11px] text-text-secondary font-medium">
             Showing <span className="font-bold text-text-primary">{startIndex + 1}</span>-
             <span className="font-bold text-text-primary">{endIndex}</span> of{" "}
             <span className="font-bold text-text-primary">{filteredClients.length}</span> clients
           </span>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <Button
               variant="outline"
               size="sm"
               disabled={currentPage === 1}
               onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-              className="h-8 text-xs font-semibold px-3 rounded-lg bg-surface-white border border-border hover:bg-surface-page cursor-pointer active:scale-[0.96] transition-all"
+              className="h-7 text-[11px] font-semibold px-3 rounded-lg bg-surface-white border border-border hover:bg-surface-page cursor-pointer active:scale-[0.96] transition-all"
             >
               &lt; Previous
             </Button>
@@ -531,7 +483,7 @@ export function ClientsClient({ initialClients, metrics }: ClientsClientProps) {
               size="sm"
               disabled={currentPage === totalPages}
               onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-              className="h-8 text-xs font-semibold px-3 rounded-lg bg-surface-white border border-border hover:bg-surface-page cursor-pointer active:scale-[0.96] transition-all"
+              className="h-7 text-[11px] font-semibold px-3 rounded-lg bg-surface-white border border-border hover:bg-surface-page cursor-pointer active:scale-[0.96] transition-all"
             >
               Next &gt;
             </Button>

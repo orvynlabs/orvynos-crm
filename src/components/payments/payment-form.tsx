@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { IconLoader, IconAlertCircle } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
-import { PaymentMethod } from "@/generated/prisma/client";
+import { PaymentMethod } from "@/lib/enums";
 
 const paymentSchema = z.object({
   projectId: z.string().min(1, "Project is required"),

@@ -2,7 +2,7 @@
 
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
-import { PaymentMethod, PaymentStatus } from "@/generated/prisma/client";
+import { PaymentMethod, PaymentStatus } from "@/lib/enums";
 
 export type PaymentInput = {
   projectId: string;

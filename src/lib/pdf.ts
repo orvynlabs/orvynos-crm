@@ -3,11 +3,40 @@ import { chromium } from 'playwright';
 // Reuse a single browser instance across requests to avoid cold-start overhead
 let browserInstance: Awaited<ReturnType<typeof chromium.launch>> | null = null;
 
+import fs from 'fs';
+import path from 'path';
+
 async function getBrowser() {
   if (!browserInstance || !browserInstance.isConnected()) {
-    browserInstance = await chromium.launch({
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu', '--disable-dev-shm-usage'],
-    });
+    try {
+      const userHome = process.env.USERPROFILE || 'C:\\Users\\muham';
+      const msPlaywrightDir = path.join(userHome, 'AppData', 'Local', 'ms-playwright');
+      let customExecPath: string | undefined;
+
+      if (fs.existsSync(msPlaywrightDir)) {
+        const entries = fs.readdirSync(msPlaywrightDir);
+        for (const entry of entries) {
+          if (entry.startsWith('chromium-')) {
+            const p = path.join(msPlaywrightDir, entry, 'chrome-win64', 'chrome.exe');
+            if (fs.existsSync(p)) {
+              customExecPath = p;
+              break;
+            }
+          }
+        }
+      }
+
+      console.log('[PDF Generator] Launching Chromium with exec path:', customExecPath || 'default');
+
+      browserInstance = await chromium.launch({
+        headless: true,
+        ...(customExecPath ? { executablePath: customExecPath } : {}),
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu', '--disable-dev-shm-usage'],
+      });
+    } catch (err) {
+      browserInstance = null;
+      throw err;
+    }
   }
   return browserInstance;
 }

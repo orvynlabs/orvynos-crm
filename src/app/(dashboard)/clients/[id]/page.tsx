@@ -2,8 +2,6 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { ClientDetailClient } from "./client-detail-client";
 
-export const revalidate = 0; // Disable cache for instant updates
-
 export default async function ClientDetailPage({
   params,
 }: {
@@ -36,6 +34,9 @@ export default async function ClientDetailPage({
       notes: {
         orderBy: { createdAt: "desc" },
       },
+      documents: {
+        orderBy: { createdAt: "desc" },
+      },
     },
   });
 
@@ -43,5 +44,69 @@ export default async function ClientDetailPage({
     notFound();
   }
 
-  return <ClientDetailClient client={JSON.parse(JSON.stringify(client))} />;
+  const formattedClient = {
+    id: client.id,
+    name: client.name,
+    logo: client.logo,
+    contactName: client.contactName,
+    email: client.email,
+    phone: client.phone,
+    secondaryPhone: client.secondaryPhone,
+    website: client.website,
+    address: client.address,
+    city: client.city,
+    state: client.state,
+    gstin: client.gstin,
+    createdAt: client.createdAt.toISOString(),
+    updatedAt: client.updatedAt.toISOString(),
+    projects: client.projects.map((p) => ({
+      id: p.id,
+      name: p.name,
+      description: p.description,
+      status: p.status,
+      budget: p.budget ? Number(p.budget) : 0,
+      progress: p.progress,
+      techStack: p.techStack,
+      startDate: p.startDate ? p.startDate.toISOString() : null,
+      deadline: p.deadline ? p.deadline.toISOString() : null,
+      completedAt: p.completedAt ? p.completedAt.toISOString() : null,
+      createdAt: p.createdAt.toISOString(),
+      updatedAt: p.updatedAt.toISOString(),
+      activities: p.activities.map((act) => ({
+        id: act.id,
+        projectId: act.projectId,
+        action: act.action,
+        detail: act.detail,
+        createdAt: act.createdAt.toISOString(),
+      })),
+    })),
+    payments: client.payments.map((pmt) => ({
+      id: pmt.id,
+      amount: pmt.amount ? Number(pmt.amount) : 0,
+      status: pmt.status,
+      method: pmt.method,
+      reference: pmt.reference,
+      notes: pmt.notes,
+      paidAt: pmt.paidAt.toISOString(),
+      createdAt: pmt.createdAt.toISOString(),
+      updatedAt: pmt.updatedAt.toISOString(),
+      project: pmt.project ? { name: pmt.project.name } : null,
+    })),
+    notes: client.notes.map((n) => ({
+      id: n.id,
+      content: n.content,
+      createdAt: n.createdAt.toISOString(),
+    })),
+    documents: client.documents.map((d) => ({
+      id: d.id,
+      name: d.name,
+      type: d.type,
+      r2Key: d.r2Key,
+      mimeType: d.mimeType || "application/octet-stream",
+      size: d.size || 0,
+      createdAt: d.createdAt.toISOString(),
+    })),
+  };
+
+  return <ClientDetailClient client={formattedClient} />;
 }

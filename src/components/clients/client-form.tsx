@@ -9,9 +9,11 @@ import { Button } from "@/components/ui/button";
 // Schema validation using Zod
 const clientSchema = z.object({
   name: z.string().min(1, "Company name is required"),
+  logo: z.string().optional().or(z.literal("")),
   contactName: z.string().optional().or(z.literal("")),
   email: z.string().email("Invalid email format").optional().or(z.literal("")),
   phone: z.string().optional().or(z.literal("")),
+  secondaryPhone: z.string().optional().or(z.literal("")),
   website: z.string().optional().or(z.literal("")),
   gstin: z.string().optional().or(z.literal("")),
   address: z.string().optional().or(z.literal("")),
@@ -47,9 +49,11 @@ export function ClientForm({
     resolver: zodResolver(clientSchema),
     defaultValues: {
       name: "",
+      logo: "",
       contactName: "",
       email: "",
       phone: "",
+      secondaryPhone: "",
       website: "",
       gstin: "",
       address: "",
@@ -85,21 +89,36 @@ export function ClientForm({
         </div>
       )}
 
-      {/* Company Name */}
-      <div className="space-y-1.5">
-        <label className="text-[10px] font-extrabold text-text-primary uppercase tracking-wider">
-          Company Name <span className="text-rose-500">*</span>
-        </label>
-        <input
-          type="text"
-          disabled={isPending}
-          {...register("name")}
-          placeholder="e.g. Acme Corporation"
-          className="flex h-9 w-full rounded-lg border border-border bg-surface-page px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-orange font-semibold"
-        />
-        {errors.name && (
-          <p className="text-[10px] text-rose-600 dark:text-rose-400 font-bold">{errors.name.message}</p>
-        )}
+      {/* Company Name & Optional Logo */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-extrabold text-text-primary uppercase tracking-wider">
+            Company Name <span className="text-rose-500">*</span>
+          </label>
+          <input
+            type="text"
+            disabled={isPending}
+            {...register("name")}
+            placeholder="e.g. Acme Corporation"
+            className="flex h-9 w-full rounded-lg border border-border bg-surface-page px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-orange font-semibold"
+          />
+          {errors.name && (
+            <p className="text-[10px] text-rose-600 dark:text-rose-400 font-bold">{errors.name.message}</p>
+          )}
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-extrabold text-text-primary uppercase tracking-wider">
+            Company Logo URL (Optional)
+          </label>
+          <input
+            type="text"
+            disabled={isPending}
+            {...register("logo")}
+            placeholder="https://example.com/logo.png"
+            className="flex h-9 w-full rounded-lg border border-border bg-surface-page px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-orange font-semibold"
+          />
+        </div>
       </div>
 
       {/* Contact Person */}
@@ -134,22 +153,36 @@ export function ClientForm({
           )}
         </div>
 
-        {/* Phone */}
+        {/* Primary Phone */}
         <div className="space-y-1.5">
           <label className="text-[10px] font-extrabold text-text-primary uppercase tracking-wider">
-            Phone Number
+            Primary Phone
           </label>
           <input
             type="tel"
             disabled={isPending}
             {...register("phone")}
-            placeholder="e.g. +91 9999999999"
+            placeholder="e.g. +91 9876543210"
             className="flex h-9 w-full rounded-lg border border-border bg-surface-page px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-orange font-semibold"
           />
         </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Secondary Phone */}
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-extrabold text-text-primary uppercase tracking-wider">
+            Secondary Phone (Optional)
+          </label>
+          <input
+            type="tel"
+            disabled={isPending}
+            {...register("secondaryPhone")}
+            placeholder="e.g. +91 9123456789"
+            className="flex h-9 w-full rounded-lg border border-border bg-surface-page px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-orange font-semibold"
+          />
+        </div>
+
         {/* Website */}
         <div className="space-y-1.5">
           <label className="text-[10px] font-extrabold text-text-primary uppercase tracking-wider">
@@ -166,20 +199,20 @@ export function ClientForm({
             <p className="text-[10px] text-rose-600 dark:text-rose-400 font-bold">{errors.website.message}</p>
           )}
         </div>
+      </div>
 
-        {/* GSTIN */}
-        <div className="space-y-1.5">
-          <label className="text-[10px] font-extrabold text-text-primary uppercase tracking-wider">
-            GSTIN (Optional)
-          </label>
-          <input
-            type="text"
-            disabled={isPending}
-            {...register("gstin")}
-            placeholder="e.g. 27AAACA0000A1Z1"
-            className="flex h-9 w-full rounded-lg border border-border bg-surface-page px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-orange font-semibold"
-          />
-        </div>
+      {/* GSTIN */}
+      <div className="space-y-1.5">
+        <label className="text-[10px] font-extrabold text-text-primary uppercase tracking-wider">
+          GSTIN (Optional)
+        </label>
+        <input
+          type="text"
+          disabled={isPending}
+          {...register("gstin")}
+          placeholder="e.g. 27AAACA0000A1Z1"
+          className="flex h-9 w-full rounded-lg border border-border bg-surface-page px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-orange font-semibold"
+        />
       </div>
 
       {/* Address */}
