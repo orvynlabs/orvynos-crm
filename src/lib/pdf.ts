@@ -1,9 +1,5 @@
-import { chromium } from 'playwright';
 import fs from 'fs';
 import path from 'path';
-
-// Reuse a single browser instance across requests to avoid cold-start overhead
-let browserInstance: Awaited<ReturnType<typeof chromium.launch>> | null = null;
 
 // Types for the generic pipeline
 export type PdfDocumentType = 'PROPOSAL' | 'INVOICE' | 'AGREEMENT' | 'QUOTATION' | 'RECEIPT';
@@ -77,6 +73,77 @@ export function injectBrandAssets(html: string): string {
   return result;
 }
 
+let browserInstance: any = null;
+
+async function getBrowser() {
+  if (browserInstance && browserInstance.isConnected()) {
+    return browserInstance;
+  }
+
+  const isVercelServerless = Boolean(
+    process.env.VERCEL ||
+    process.env.AWS_LAMBDA_FUNCTION_NAME ||
+    process.env.AWS_EXECUTION_ENV ||
+    process.env.NODE_ENV === 'production'
+  );
+
+  if (isVercelServerless) {
+    console.log('[PDF Generator] Launching Chromium via @sparticuz/chromium for Vercel Serverless...');
+    const chromium = (await import('@sparticuz/chromium')).default;
+    const playwright = await import('playwright-core');
+
+    const executablePath = await chromium.executablePath();
+    browserInstance = await playwright.chromium.launch({
+      args: chromium.args,
+      executablePath: executablePath,
+      headless: true,
+    });
+    return browserInstance;
+  }
+
+  // Local development environment fallback
+  try {
+    const playwright = await import('playwright');
+    const userHome = process.env.USERPROFILE || 'C:\\Users\\muham';
+    const msPlaywrightDir = path.join(userHome, 'AppData', 'Local', 'ms-playwright');
+    let customExecPath: string | undefined;
+
+    if (fs.existsSync(msPlaywrightDir)) {
+      const entries = fs.readdirSync(msPlaywrightDir);
+      for (const entry of entries) {
+        if (entry.startsWith('chromium-')) {
+          const p = path.join(msPlaywrightDir, entry, 'chrome-win64', 'chrome.exe');
+          if (fs.existsSync(p)) {
+            customExecPath = p;
+            break;
+          }
+        }
+      }
+    }
+
+    console.log('[PDF Generator] Launching local Chromium with exec path:', customExecPath || 'default');
+
+    browserInstance = await playwright.chromium.launch({
+      headless: true,
+      ...(customExecPath ? { executablePath: customExecPath } : {}),
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu', '--disable-dev-shm-usage'],
+    });
+    return browserInstance;
+  } catch (err) {
+    console.error('[PDF Generator] Failed to launch local browser, falling back to @sparticuz/chromium...', err);
+    const chromium = (await import('@sparticuz/chromium')).default;
+    const playwright = await import('playwright-core');
+
+    const executablePath = await chromium.executablePath();
+    browserInstance = await playwright.chromium.launch({
+      args: chromium.args,
+      executablePath: executablePath,
+      headless: true,
+    });
+    return browserInstance;
+  }
+}
+
 /**
  * Generic one-call pipeline: HTML → PDF → Storage → Document record.
  * Used by all generators (Proposal, Invoice, Agreement, Quotation).
@@ -124,44 +191,8 @@ export async function generateAndSaveDocument(
   };
 }
 
-async function getBrowser() {
-  if (!browserInstance || !browserInstance.isConnected()) {
-    try {
-      const userHome = process.env.USERPROFILE || 'C:\\Users\\muham';
-      const msPlaywrightDir = path.join(userHome, 'AppData', 'Local', 'ms-playwright');
-      let customExecPath: string | undefined;
-
-      if (fs.existsSync(msPlaywrightDir)) {
-        const entries = fs.readdirSync(msPlaywrightDir);
-        for (const entry of entries) {
-          if (entry.startsWith('chromium-')) {
-            const p = path.join(msPlaywrightDir, entry, 'chrome-win64', 'chrome.exe');
-            if (fs.existsSync(p)) {
-              customExecPath = p;
-              break;
-            }
-          }
-        }
-      }
-
-      console.log('[PDF Generator] Launching Chromium with exec path:', customExecPath || 'default');
-
-      browserInstance = await chromium.launch({
-        headless: true,
-        ...(customExecPath ? { executablePath: customExecPath } : {}),
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu', '--disable-dev-shm-usage'],
-      });
-    } catch (err) {
-      browserInstance = null;
-      throw err;
-    }
-  }
-  return browserInstance;
-}
-
 /**
  * Generates an A4 PDF buffer directly from raw HTML content.
- * This completely avoids local HTTP requests and concurrent deadlocks in Next.js development mode.
  */
 export async function generatePdfFromHtml(
   htmlContent: string,
@@ -169,19 +200,19 @@ export async function generatePdfFromHtml(
 ): Promise<Buffer> {
   console.log(`[PDF Generator] Rendering PDF directly from HTML content...`);
   const startMs = Date.now();
-  
+
   const browser = await getBrowser();
   const context = await browser.newContext();
   const page = await context.newPage();
-  
+
   try {
     // Inject the HTML directly
     await page.setContent(htmlContent, { waitUntil: 'load', timeout: 15000 });
 
-    // Wait for webfonts to actually finish loading (faster + more reliable than a fixed sleep)
+    // Wait for webfonts to actually finish loading
     await page.evaluate(() => (document as { fonts?: { ready: Promise<unknown> } }).fonts?.ready).catch(() => {});
     await page.waitForTimeout(150);
-    
+
     const pdfBuffer = await page.pdf({
       format: 'A4',
       margin: {
@@ -194,7 +225,7 @@ export async function generatePdfFromHtml(
       preferCSSPageSize: true,
       ...(options?.pageRanges ? { pageRanges: options.pageRanges } : {}),
     });
-    
+
     console.log(`[PDF Generator] HTML-to-PDF generation completed in ${Date.now() - startMs}ms (${pdfBuffer.length} bytes)`);
     return pdfBuffer;
   } finally {
