@@ -1,5 +1,4 @@
 import { auth } from "@/auth";
-import { redirect } from "next/navigation";
 import {
   getCoreDashboardMetrics,
   getDashboardChartsData,
@@ -8,13 +7,8 @@ import {
 import { DashboardClient } from "./dashboard-client";
 
 export default async function DashboardPage() {
-  const session = await auth();
-
-  if (!session?.user) {
-    redirect("/login");
-  }
-
-  const [metrics, charts, activity] = await Promise.all([
+  const [session, metrics, charts, activity] = await Promise.all([
+    auth(),
     getCoreDashboardMetrics(),
     getDashboardChartsData(),
     getDashboardActivityFeeds(),
@@ -22,7 +16,7 @@ export default async function DashboardPage() {
 
   return (
     <DashboardClient
-      userName={session.user.name || "Owner"}
+      userName={session?.user?.name || "Owner"}
       metrics={metrics}
       charts={charts}
       activity={activity}

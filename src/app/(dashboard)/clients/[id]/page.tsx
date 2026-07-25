@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/db";
+import { prisma, withRetry } from "@/lib/db";
 import { ClientDetailClient } from "./client-detail-client";
 
 export default async function ClientDetailPage({
@@ -7,38 +7,61 @@ export default async function ClientDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-
-  // Next.js 15: params must be awaited before extracting parameters
   const { id } = await params;
 
-  // Query the client, projects, payments, and notes in one call
-  const client = await prisma.client.findUnique({
-    where: { id },
-    include: {
-      projects: {
-        orderBy: { createdAt: "desc" },
+  const [client, allDocs, allProposals, allInvoices, allAgreements] = await Promise.all([
+    withRetry(() =>
+      prisma.client.findUnique({
+        where: { id },
         include: {
-          activities: {
+          projects: {
+            orderBy: { createdAt: "desc" },
+            include: {
+              activities: {
+                orderBy: { createdAt: "desc" },
+                take: 10,
+              },
+            },
+          },
+          payments: {
+            orderBy: { paidAt: "desc" },
+            include: {
+              project: {
+                select: { name: true },
+              },
+            },
+          },
+          notes: {
             orderBy: { createdAt: "desc" },
           },
         },
-      },
-      payments: {
-        orderBy: { paidAt: "desc" },
-        include: {
-          project: {
-            select: { name: true },
-          },
-        },
-      },
-      notes: {
+      })
+    ),
+    withRetry(() =>
+      prisma.document.findMany({
+        where: { OR: [{ clientId: id }, { project: { clientId: id } }] },
         orderBy: { createdAt: "desc" },
-      },
-      documents: {
+      })
+    ),
+    withRetry(() =>
+      prisma.proposal.findMany({
+        where: { OR: [{ clientId: id }, { project: { clientId: id } }] },
         orderBy: { createdAt: "desc" },
-      },
-    },
-  });
+      })
+    ),
+    withRetry(() =>
+      prisma.invoice.findMany({
+        where: { OR: [{ clientId: id }, { project: { clientId: id } }] },
+        orderBy: { createdAt: "desc" },
+      })
+    ),
+    withRetry(() =>
+      prisma.agreement.findMany({
+        where: { OR: [{ clientId: id }, { project: { clientId: id } }] },
+        orderBy: { createdAt: "desc" },
+      })
+    ),
+  ]);
 
   if (!client) {
     notFound();
@@ -97,7 +120,7 @@ export default async function ClientDetailPage({
       content: n.content,
       createdAt: n.createdAt.toISOString(),
     })),
-    documents: client.documents.map((d) => ({
+    documents: (allDocs || []).map((d) => ({
       id: d.id,
       name: d.name,
       type: d.type,
@@ -105,6 +128,31 @@ export default async function ClientDetailPage({
       mimeType: d.mimeType || "application/octet-stream",
       size: d.size || 0,
       createdAt: d.createdAt.toISOString(),
+    })),
+    proposals: (allProposals || []).map((p) => ({
+      id: p.id,
+      number: p.number,
+      title: p.title,
+      amount: p.amount ? Number(p.amount) : null,
+      status: p.status,
+      pdfKey: p.pdfKey,
+      createdAt: p.createdAt.toISOString(),
+    })),
+    invoices: (allInvoices || []).map((inv) => ({
+      id: inv.id,
+      number: inv.number,
+      total: Number(inv.total),
+      status: inv.status,
+      pdfKey: inv.pdfKey,
+      createdAt: inv.createdAt.toISOString(),
+    })),
+    agreements: (allAgreements || []).map((a) => ({
+      id: a.id,
+      number: a.number,
+      title: a.title,
+      status: a.status,
+      pdfKey: a.pdfKey,
+      createdAt: a.createdAt.toISOString(),
     })),
   };
 

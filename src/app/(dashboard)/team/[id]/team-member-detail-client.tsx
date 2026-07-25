@@ -17,6 +17,8 @@ import {
   IconUsers,
 } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
+import { toast } from "@/components/ui/toast-provider";
+import { confirmModal } from "@/components/ui/confirm-provider";
 import {
   Sheet,
   SheetContent,
@@ -150,12 +152,22 @@ export function TeamMemberDetailClient({ member }: TeamMemberDetailClientProps) 
   };
 
   // Delete payment record
-  const handleDeletePayment = (paymentId: string) => {
-    if (!confirm("Are you sure you want to delete this payout record?")) return;
+  const handleDeletePayment = async (paymentId: string) => {
+    const ok = await confirmModal({
+      title: "Delete Payout Record?",
+      description: "Are you sure you want to delete this team payout record? This action cannot be undone.",
+      confirmText: "Delete Payout",
+      variant: "danger",
+    });
+    if (!ok) return;
+
     startTransition(async () => {
       const res = await deleteTeamPayment(paymentId);
       if (res.success) {
+        toast.warning("Payout Deleted", "Team payout record was removed.");
         router.refresh();
+      } else {
+        toast.error("Delete Failed", res.error);
       }
     });
   };

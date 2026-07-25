@@ -29,6 +29,7 @@ import {
   IconFileCheck,
   IconPhoto,
   IconSparkles,
+  IconEye,
 } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -42,10 +43,21 @@ import {
 import { ProjectForm, type ProjectFormValues } from "@/components/projects/project-form";
 import { updateProject } from "../actions";
 import { PaymentForm } from "@/components/payments/payment-form";
+import { toast } from "@/components/ui/toast-provider";
+import { confirmModal } from "@/components/ui/confirm-provider";
 import { PaymentHistoryTable } from "@/components/payments/payment-history-table";
 import { createPayment } from "@/app/(dashboard)/payments/actions";
 import { DeliveryBadge } from "@/components/projects/delivery-badge";
 import { createDocument, deleteDocument } from "@/app/(dashboard)/documents/actions";
+import { deleteGeneratorItem } from "@/app/(dashboard)/generators/actions";
+
+const getFileUrl = (key?: string | null) => {
+  if (!key) return "#";
+  const trimmed = key.trim();
+  if (trimmed.startsWith("http")) return trimmed;
+  if (trimmed.startsWith("/api/files/")) return trimmed;
+  return `/api/files/${trimmed.replace(/^\/+/, "")}`;
+};
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -293,6 +305,37 @@ export function ProjectDetailClient({ project, clients, teamMembers }: ProjectDe
   const [isPending, startTransition] = useTransition();
   const [errorMsg, setErrorMsg] = useState("");
 
+  // Local document state for instant updates
+  const [proposalsList, setProposalsList] = useState(project.proposals || []);
+  const [invoicesList, setInvoicesList] = useState(project.invoices || []);
+  const [agreementsList, setAgreementsList] = useState(project.agreements || []);
+  const [previewModal, setPreviewModal] = useState<{ open: boolean; title: string; pdfKey: string | null }>({
+    open: false, title: "", pdfKey: null,
+  });
+
+  const handleDeleteGenItem = async (id: string, type: "proposal" | "invoice" | "agreement") => {
+    const ok = await confirmModal({
+      title: `Delete ${type.charAt(0).toUpperCase() + type.slice(1)}?`,
+      description: `Are you sure you want to delete this ${type}? This action cannot be undone.`,
+      confirmText: `Delete ${type.charAt(0).toUpperCase() + type.slice(1)}`,
+      variant: "danger",
+    });
+    if (!ok) return;
+
+    startTransition(async () => {
+      const res = await deleteGeneratorItem(id, type);
+      if (res.success) {
+        if (type === "proposal") setProposalsList(prev => prev.filter(p => p.id !== id));
+        else if (type === "invoice") setInvoicesList(prev => prev.filter(i => i.id !== id));
+        else setAgreementsList(prev => prev.filter(a => a.id !== id));
+        toast.warning("Document Deleted", `The ${type} record was deleted.`);
+        router.refresh();
+      } else {
+        toast.error("Delete Failed", res.error || `Failed to delete ${type}`);
+      }
+    });
+  };
+
   // Deferred rendering state to keep sheet open animation lag-free
   const [isEditRendered, setIsEditRendered] = useState(false);
 
@@ -437,19 +480,29 @@ export function ProjectDetailClient({ project, clients, teamMembers }: ProjectDe
     });
   };
 
-  const handleDocDelete = (docId: string) => {
-    if (!confirm("Are you sure you want to delete this document?")) return;
+  const handleDocDelete = async (docId: string) => {
+    const ok = await confirmModal({
+      title: "Delete Project Document?",
+      description: "Are you sure you want to delete this document from the project vault? This action cannot be undone.",
+      confirmText: "Delete Document",
+      variant: "danger",
+    });
+    if (!ok) return;
+
     startDocTransition(async () => {
       const res = await deleteDocument(docId);
       if (res.success) {
+        toast.warning("Document Deleted", "Project document removed.");
         router.refresh();
+      } else {
+        toast.error("Delete Failed", res.error);
       }
     });
   };
 
-  const invoices = project.invoices || [];
-  const proposals = project.proposals || [];
-  const agreements = project.agreements || [];
+  const invoices = invoicesList;
+  const proposals = proposalsList;
+  const agreements = agreementsList;
   const quotations = project.quotations || [];
   const uploadedFiles = project.documents || [];
 
@@ -1267,18 +1320,37 @@ const getFileUrl = (key?: string | null) => {
                           </p>
                         </div>
 
-                        {inv.pdfKey ? (
-                          <a
-                            href={getFileUrl(inv.pdfKey)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center justify-center gap-1.5 text-[11px] font-bold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-lg py-1.5 transition-colors"
+                        <div className="flex items-center gap-1.5 pt-2 border-t border-border/40">
+                          {inv.pdfKey && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => setPreviewModal({ open: true, title: `Invoice: ${inv.number}`, pdfKey: inv.pdfKey })}
+                                className="flex-1 inline-flex items-center justify-center gap-1 text-[11px] font-semibold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-lg py-1.5 transition-colors cursor-pointer"
+                              >
+                                <IconEye className="h-3.5 w-3.5" /> View
+                              </button>
+                              <a
+                                href={getFileUrl(inv.pdfKey)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                download
+                                className="p-1.5 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors"
+                                title="Download PDF"
+                              >
+                                <IconDownload className="h-3.5 w-3.5" />
+                              </a>
+                            </>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteGenItem(inv.id, "invoice")}
+                            className="p-1.5 text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors cursor-pointer"
+                            title="Delete Invoice"
                           >
-                            <IconDownload className="h-3.5 w-3.5" /> View / Download PDF
-                          </a>
-                        ) : (
-                          <span className="text-[10px] text-text-secondary/70 italic text-center">PDF file available in system</span>
-                        )}
+                            <IconTrash className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -1326,18 +1398,37 @@ const getFileUrl = (key?: string | null) => {
                           )}
                         </div>
 
-                        {prop.pdfKey ? (
-                          <a
-                            href={getFileUrl(prop.pdfKey)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center justify-center gap-1.5 text-[11px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg py-1.5 transition-colors"
+                        <div className="flex items-center gap-1.5 pt-2 border-t border-border/40">
+                          {prop.pdfKey && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => setPreviewModal({ open: true, title: `Proposal: ${prop.title || prop.number}`, pdfKey: prop.pdfKey })}
+                                className="flex-1 inline-flex items-center justify-center gap-1 text-[11px] font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg py-1.5 transition-colors cursor-pointer"
+                              >
+                                <IconEye className="h-3.5 w-3.5" /> View
+                              </button>
+                              <a
+                                href={getFileUrl(prop.pdfKey)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                download
+                                className="p-1.5 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+                                title="Download PDF"
+                              >
+                                <IconDownload className="h-3.5 w-3.5" />
+                              </a>
+                            </>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteGenItem(prop.id, "proposal")}
+                            className="p-1.5 text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors cursor-pointer"
+                            title="Delete Proposal"
                           >
-                            <IconDownload className="h-3.5 w-3.5" /> View Proposal PDF
-                          </a>
-                        ) : (
-                          <span className="text-[10px] text-text-secondary/70 italic text-center">PDF generated in system</span>
-                        )}
+                            <IconTrash className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -1385,18 +1476,37 @@ const getFileUrl = (key?: string | null) => {
                           )}
                         </div>
 
-                        {agr.pdfKey ? (
-                          <a
-                            href={getFileUrl(agr.pdfKey)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center justify-center gap-1.5 text-[11px] font-bold text-purple-600 bg-purple-50 hover:bg-purple-100 rounded-lg py-1.5 transition-colors"
+                        <div className="flex items-center gap-1.5 pt-2 border-t border-border/40">
+                          {agr.pdfKey && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => setPreviewModal({ open: true, title: agr.title || agr.number, pdfKey: agr.pdfKey })}
+                                className="flex-1 inline-flex items-center justify-center gap-1 text-[11px] font-semibold text-purple-600 bg-purple-50 hover:bg-purple-100 rounded-lg py-1.5 transition-colors cursor-pointer"
+                              >
+                                <IconEye className="h-3.5 w-3.5" /> View
+                              </button>
+                              <a
+                                href={getFileUrl(agr.pdfKey)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                download
+                                className="p-1.5 text-purple-600 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors"
+                                title="Download PDF"
+                              >
+                                <IconDownload className="h-3.5 w-3.5" />
+                              </a>
+                            </>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteGenItem(agr.id, "agreement")}
+                            className="p-1.5 text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors cursor-pointer"
+                            title="Delete Agreement"
                           >
-                            <IconDownload className="h-3.5 w-3.5" /> View Agreement PDF
-                          </a>
-                        ) : (
-                          <span className="text-[10px] text-text-secondary/70 italic text-center">PDF document in system</span>
-                        )}
+                            <IconTrash className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -1579,6 +1689,56 @@ const getFileUrl = (key?: string | null) => {
           </div>
         </div>
       )}
+
+      {/* ─── PDF PREVIEW MODAL ─── */}
+      <PdfPreviewModal
+        open={previewModal.open}
+        onClose={() => setPreviewModal({ open: false, title: "", pdfKey: null })}
+        title={previewModal.title}
+        pdfKey={previewModal.pdfKey}
+      />
     </div>
+  );
+}
+
+function PdfPreviewModal({ open, onClose, title, pdfKey }: { open: boolean; onClose: () => void; title: string; pdfKey: string | null }) {
+  const url = getFileUrl(pdfKey);
+  return (
+    <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
+      <SheetContent side="right" className="w-full sm:max-w-4xl p-0 flex flex-col h-full bg-surface-white">
+        <div className="px-6 py-4 border-b border-border-custom flex items-center justify-between bg-surface-page/50">
+          <div>
+            <h3 className="font-bold text-sm text-foreground truncate">{title}</h3>
+            <p className="text-[11px] text-text-secondary">Official PDF Document Preview</p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0 pr-8">
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-surface-white border border-border-custom hover:bg-surface-page transition text-foreground"
+            >
+              <IconEye className="h-3.5 w-3.5 text-violet-600" /> Full Page
+            </a>
+            <a
+              href={url}
+              download
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-brand-orange text-white hover:bg-brand-orange-hover transition shadow-xs"
+            >
+              <IconDownload className="h-3.5 w-3.5" /> Download
+            </a>
+          </div>
+        </div>
+        <div className="flex-1 bg-stone-100 dark:bg-stone-900">
+          {pdfKey ? (
+            <iframe src={url} className="w-full h-full border-0" title={title} />
+          ) : (
+            <div className="flex items-center justify-center h-full text-xs text-text-secondary">
+              No PDF file available to preview
+            </div>
+          )}
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }

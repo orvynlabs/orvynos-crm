@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useMemo, useDeferredValue } from "react";
 import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   IconSearch,
   IconDownload,
@@ -9,6 +10,12 @@ import {
   IconPhone,
   IconChevronRight,
   IconAlertCircle,
+  IconBuilding,
+  IconUser,
+  IconBriefcase,
+  IconSparkles,
+  IconFileText,
+  IconX,
 } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { ClientForm, type ClientFormValues } from "@/components/clients/client-form";
@@ -21,6 +28,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { createClient } from "./actions";
+import { toast } from "@/components/ui/toast-provider";
 
 type Project = {
   id: string;
@@ -81,11 +89,6 @@ const getStatusConfig = (status: string) => {
         badge: "bg-blue-50 text-blue-600 dark:bg-blue-950/20 dark:text-blue-400 border border-blue-100 dark:border-blue-900/30",
         dot: "bg-blue-500",
       };
-    case "NEW":
-      return {
-        badge: "bg-stone-50 text-stone-600 dark:bg-stone-900/40 dark:text-stone-450 border border-stone-150",
-        dot: "bg-stone-400",
-      };
     case "REVIEW":
       return {
         badge: "bg-amber-50 text-amber-600 dark:bg-amber-950/20 dark:text-amber-400 border border-amber-100 dark:border-amber-900/30",
@@ -104,10 +107,10 @@ const getStatusConfig = (status: string) => {
   }
 };
 
-
-
 export function ClientsClient({ initialClients, metrics }: ClientsClientProps) {
+  const [clientsList, setClientsList] = useState<Client[]>(initialClients);
   const [searchQuery, setSearchQuery] = useState("");
+  const deferredSearchQuery = useDeferredValue(searchQuery);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [errorMsg, setErrorMsg] = useState("");
@@ -116,7 +119,7 @@ export function ClientsClient({ initialClients, metrics }: ClientsClientProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 9;
 
-  // Calculate relative date strings
+  // Relative time helper
   const getRelativeTime = (dateString: string) => {
     const diffTime = Math.abs(Date.now() - new Date(dateString).getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -125,7 +128,6 @@ export function ClientsClient({ initialClients, metrics }: ClientsClientProps) {
     return `${diffDays}d ago`;
   };
 
-  // Helper for avatar initials
   const getInitials = (name: string) => {
     return name
       .split(" ")
@@ -136,21 +138,27 @@ export function ClientsClient({ initialClients, metrics }: ClientsClientProps) {
       .toUpperCase();
   };
 
-  // Filter clients
-  const filteredClients = initialClients.filter((client) => {
-    const matchesSearch =
-      client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (client.phone && client.phone.includes(searchQuery)) ||
-      (client.contactName &&
-        client.contactName.toLowerCase().includes(searchQuery.toLowerCase()));
-    return matchesSearch;
-  });
+  // Memoized Filtered Clients with non-blocking deferredSearchQuery
+  const filteredClients = useMemo(() => {
+    const q = deferredSearchQuery.toLowerCase().trim();
+    if (!q) return clientsList;
+    return clientsList.filter((client) => {
+      return (
+        client.name.toLowerCase().includes(q) ||
+        (client.phone && client.phone.includes(q)) ||
+        (client.contactName && client.contactName.toLowerCase().includes(q))
+      );
+    });
+  }, [clientsList, deferredSearchQuery]);
 
   // Paginated clients
   const totalPages = Math.ceil(filteredClients.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = Math.min(startIndex + itemsPerPage, filteredClients.length);
-  const paginatedClients = filteredClients.slice(startIndex, endIndex);
+  const paginatedClients = useMemo(
+    () => filteredClients.slice(startIndex, endIndex),
+    [filteredClients, startIndex, endIndex]
+  );
 
   // CSV Export handler
   const exportToCSV = () => {
@@ -174,8 +182,8 @@ export function ClientsClient({ initialClients, metrics }: ClientsClientProps) {
       client.website || "",
       client.gstin || "",
       client.city || "",
-      client.projects.length,
-      new Date(client.createdAt).toLocaleDateString("en-IN"),
+      client.projects?.length || 0,
+      client.createdAt,
     ]);
 
     const csvContent =
@@ -189,6 +197,7 @@ export function ClientsClient({ initialClients, metrics }: ClientsClientProps) {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    toast.info("Export Complete", `Exported ${filteredClients.length} clients to CSV file.`);
   };
 
   // JSON Export handler
@@ -202,31 +211,65 @@ export function ClientsClient({ initialClients, metrics }: ClientsClientProps) {
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     document.body.removeChild(downloadAnchor);
+    toast.info("Export Complete", `Exported ${filteredClients.length} clients to JSON file.`);
   };
 
-  // Handle Client Form Submission
+  // Handle Client Form Submission (Optimistic 0ms Update)
   const handleClientSubmit = (values: ClientFormValues) => {
     setErrorMsg("");
+
+    const tempId = `temp-${Date.now()}`;
+    const optimisticClient: Client = {
+      id: tempId,
+      name: values.name,
+      logo: values.logo || null,
+      contactName: values.contactName || null,
+      email: values.email || null,
+      phone: values.phone || null,
+      secondaryPhone: values.secondaryPhone || null,
+      website: values.website || null,
+      address: values.address || null,
+      city: values.city || null,
+      state: values.state || null,
+      gstin: values.gstin || null,
+      createdAt: new Date().toISOString(),
+      projects: [],
+    };
+
+    // ⚡ 1. Update UI optimistically & close sheet instantly
+    setClientsList((prev) => [optimisticClient, ...prev]);
+    setIsSheetOpen(false);
+    toast.success("Client Profile Created 🎉", `${values.name} added to Orvynos CRM.`);
+
+    // ⚡ 2. Persist in background
     startTransition(async () => {
       const res = await createClient(values);
-      if (res.success) {
-        setIsSheetOpen(false);
+      if (res.success && res.data) {
+        setClientsList((prev) =>
+          prev.map((c) => (c.id === tempId ? { ...c, id: res.data!.id } : c))
+        );
       } else {
-        setErrorMsg(res.error || "Something went wrong.");
+        setClientsList((prev) => prev.filter((c) => c.id !== tempId));
+        const err = res.error || "Failed to create client profile.";
+        setErrorMsg(err);
+        toast.error("Failed to Add Client", err);
       }
     });
   };
 
   return (
-    <div className="space-y-5 font-sans text-left">
-      {/* Header bar */}
+    <div className="space-y-4 font-sans text-left pb-20 md:pb-6">
+      {/* ─── Compact Modern Header ─── */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div>
-          <h1 className="text-lg md:text-xl font-black tracking-tight text-text-primary">
-            Clients
-          </h1>
-          <p className="text-[11px] text-text-secondary mt-0.5 font-medium">
-            Manage client accounts, contact details, and linked projects.
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center justify-center p-1.5 rounded-lg bg-brand-orange/10 text-brand-orange">
+              <IconBuilding className="h-4 w-4" />
+            </span>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">Client Directory</h1>
+          </div>
+          <p className="text-[11px] sm:text-xs text-text-secondary mt-0.5 font-medium">
+            Manage agency clients, contact persons, billing info &amp; linked projects.
           </p>
         </div>
 
@@ -234,16 +277,18 @@ export function ClientsClient({ initialClients, metrics }: ClientsClientProps) {
         <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
           <SheetTrigger
             render={
-              <Button className="font-bold text-xs bg-brand-orange hover:bg-brand-orange-hover text-white py-2 px-4 rounded-lg flex items-center gap-1.5 shadow-xs border-0 h-8 cursor-pointer active:scale-[0.98] transition-all">
-                <IconPlus className="h-3.5 w-3.5" stroke={2.5} /> Add Client
+              <Button className="gap-1.5 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 text-white font-bold text-xs py-1.5 px-3.5 rounded-xl shadow-xs border-0 h-9 cursor-pointer active:scale-95 transition-all">
+                <IconPlus className="h-4 w-4" stroke={2.5} />
+                <span>Add Client</span>
               </Button>
             }
           />
           <SheetContent className="w-full max-w-[420px] p-5 bg-surface-white border-l border-border h-full flex flex-col justify-between overflow-y-auto">
             <div className="space-y-6">
               <SheetHeader>
-                <SheetTitle className="text-base font-bold text-text-primary text-left">
-                  Create New Client
+                <SheetTitle className="text-base font-bold text-text-primary text-left flex items-center gap-2">
+                  <IconBuilding className="h-4 w-4 text-brand-orange" />
+                  <span>Create New Client</span>
                 </SheetTitle>
                 <SheetDescription className="text-xs text-text-secondary mt-0.5 text-left">
                   Add a new client profile to Orvynos CRM. Fill out the details below.
@@ -255,50 +300,56 @@ export function ClientsClient({ initialClients, metrics }: ClientsClientProps) {
                 onCancel={() => setIsSheetOpen(false)}
                 isPending={isPending}
                 errorMsg={errorMsg}
-                submitLabel="Save Client"
+                submitLabel="Save Client Profile"
               />
             </div>
           </SheetContent>
         </Sheet>
       </div>
 
-
-
-      {/* METRICS ROW */}
-      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+      {/* ─── METRICS ROW ─── */}
+      <div className="grid gap-2.5 grid-cols-2 lg:grid-cols-4">
         {[
-          { label: "Total Clients", value: metrics.totalClients, color: "bg-orange-50 text-brand-orange border-orange-100", desc: "Registered accounts" },
-          { label: "Total Projects", value: metrics.totalProjects, color: "bg-blue-50 text-blue-600 border-blue-100", desc: "Contracts across all" },
-          { label: "Active", value: metrics.ongoingProjects, color: "bg-emerald-50 text-emerald-600 border-emerald-100", desc: "In active execution" },
-          { label: "Completed", value: metrics.completedProjects, color: "bg-purple-50 text-purple-600 border-purple-100", desc: "Delivered projects" },
+          { label: "Total Clients", value: metrics.totalClients, color: "bg-orange-50 dark:bg-orange-950/30 text-brand-orange border-orange-100 dark:border-orange-900/30", desc: "Registered accounts" },
+          { label: "Total Projects", value: metrics.totalProjects, color: "bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-900/30", desc: "Contracts across all" },
+          { label: "Active Execution", value: metrics.ongoingProjects, color: "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/30", desc: "In active workflow" },
+          { label: "Completed", value: metrics.completedProjects, color: "bg-purple-50 dark:bg-purple-950/30 text-purple-600 dark:text-purple-400 border-purple-100 dark:border-purple-900/30", desc: "Delivered contracts" },
         ].map((m) => (
-          <div key={m.label} className="p-3.5 md:p-4 bg-surface-white border border-border rounded-xl flex items-center gap-3.5 shadow-2xs hover:shadow-xs transition-shadow">
-            <div className={`w-10 h-10 rounded-lg ${m.color} flex items-center justify-center border shrink-0`}>
-              <span className="text-base md:text-lg font-black">{m.value}</span>
+          <div key={m.label} className="p-3 bg-surface-white border border-border-custom rounded-xl flex items-center gap-3 shadow-2xs hover:shadow-xs transition-shadow">
+            <div className={`w-9 h-9 rounded-lg ${m.color} flex items-center justify-center border shrink-0`}>
+              <span className="text-base font-black">{m.value}</span>
             </div>
             <div className="min-w-0">
-              <span className="text-[11px] font-bold uppercase text-text-secondary tracking-wider block truncate">{m.label}</span>
-              <span className="text-[11px] text-text-secondary/70 font-medium truncate block">{m.desc}</span>
+              <span className="text-[10px] font-bold uppercase text-text-secondary tracking-wider block truncate">{m.label}</span>
+              <span className="text-[10px] text-text-secondary/70 font-medium truncate block">{m.desc}</span>
             </div>
           </div>
         ))}
       </div>
 
-      {/* ACTION BAR */}
-      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between bg-surface-white border border-border rounded-xl p-3 shadow-2xs">
+      {/* ─── ACTION BAR ─── */}
+      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between bg-surface-white border border-border-custom rounded-xl p-2.5 shadow-2xs">
         {/* Search */}
         <div className="relative w-full sm:max-w-[280px]">
-          <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-secondary" />
+          <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-secondary" />
           <input
             type="text"
-            placeholder="Search by name or phone..."
+            placeholder="Search name, contact, or phone..."
             value={searchQuery}
             onChange={(e) => {
               setSearchQuery(e.target.value);
               setCurrentPage(1);
             }}
-            className="w-full pl-9 pr-4 h-8 bg-surface-page border border-border rounded-lg text-base sm:text-xs shadow-2xs placeholder:text-text-secondary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-orange font-semibold"
+            className="w-full pl-9 pr-8 h-8 bg-surface-page border border-border-custom rounded-lg text-xs shadow-2xs placeholder:text-text-secondary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-orange font-medium"
           />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-secondary hover:text-foreground cursor-pointer"
+            >
+              <IconX className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
 
         {/* Export buttons */}
@@ -307,7 +358,7 @@ export function ClientsClient({ initialClients, metrics }: ClientsClientProps) {
             variant="outline"
             size="sm"
             onClick={exportToCSV}
-            className="h-8 bg-surface-page border border-border hover:bg-surface-white text-[11px] font-bold px-3 rounded-lg flex items-center gap-1 cursor-pointer shadow-2xs active:scale-[0.98] transition-all"
+            className="h-8 bg-surface-page border border-border-custom hover:bg-surface-white text-[11px] font-bold px-2.5 rounded-lg flex items-center gap-1 cursor-pointer shadow-2xs active:scale-95 transition-all"
           >
             <IconDownload className="h-3.5 w-3.5 text-text-secondary" /> CSV
           </Button>
@@ -315,178 +366,152 @@ export function ClientsClient({ initialClients, metrics }: ClientsClientProps) {
             variant="outline"
             size="sm"
             onClick={exportToJSON}
-            className="h-8 bg-surface-page border border-border hover:bg-surface-white text-[11px] font-bold px-3 rounded-lg flex items-center gap-1 cursor-pointer shadow-2xs active:scale-[0.98] transition-all"
+            className="h-8 bg-surface-page border border-border-custom hover:bg-surface-white text-[11px] font-bold px-2.5 rounded-lg flex items-center gap-1 cursor-pointer shadow-2xs active:scale-95 transition-all"
           >
             <IconDownload className="h-3.5 w-3.5 text-text-secondary" /> JSON
           </Button>
         </div>
       </div>
 
-      {/* CARD LIST GRID */}
-      {paginatedClients.length > 0 ? (
-        <div className="grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-          {paginatedClients.map((client) => {
-            const clientInitials = getInitials(client.name);
-            const avatarGrad = getAvatarGradient(client.name);
-            return (
-              <div
-                key={client.id}
-                className="bg-surface-white border border-border rounded-xl p-3 shadow-2xs hover:shadow-xs hover:border-brand-orange/30 transition-all duration-200 flex flex-col justify-between group/card"
-              >
-                <Link href={`/clients/${client.id}`} className="block cursor-pointer space-y-2">
-                  {/* Client Info Header */}
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      {/* Logo or Initials */}
-                      {client.logo ? (
-                        <img
-                          src={client.logo}
-                          alt={client.name}
-                          className="w-7 h-7 rounded-full object-cover border border-border/80 shrink-0 shadow-2xs"
-                          onError={(e) => {
-                            (e.target as HTMLElement).style.display = "none";
-                          }}
-                        />
-                      ) : (
-                        <div className={`w-7 h-7 rounded-full bg-gradient-to-tr ${avatarGrad} flex items-center justify-center font-bold text-[10px] select-none shrink-0 shadow-2xs`}>
-                          {clientInitials}
-                        </div>
-                      )}
-                      <div className="min-w-0">
-                        <h4 className="font-bold text-stone-900 text-xs tracking-tight capitalize group-hover/card:text-brand-orange transition-colors truncate leading-tight">
-                          {client.name}
-                        </h4>
-                        {client.contactName && (
-                          <p className="text-[10px] text-text-secondary font-medium truncate leading-tight">
-                            {client.contactName}
-                          </p>
+      {/* ─── ANIMATED CLIENT CARDS GRID ─── */}
+      <AnimatePresence mode="wait">
+        {paginatedClients.length > 0 ? (
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.18 }}
+            className="grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
+          >
+            {paginatedClients.map((client, idx) => {
+              const clientInitials = getInitials(client.name);
+              const avatarGrad = getAvatarGradient(client.name);
+              return (
+                <motion.div
+                  key={client.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.15, delay: Math.min(idx * 0.03, 0.2) }}
+                  whileHover={{ y: -2 }}
+                  className="bg-surface-white border border-border-custom rounded-xl p-3.5 shadow-2xs hover:shadow-md hover:border-brand-orange/40 transition-all duration-200 flex flex-col justify-between group/card"
+                >
+                  <Link href={`/clients/${client.id}`} className="block cursor-pointer space-y-2.5">
+                    {/* Client Header Info */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        {client.logo ? (
+                          <img
+                            src={client.logo}
+                            alt={client.name}
+                            className="w-8 h-8 rounded-full object-cover border border-border-custom shrink-0 shadow-2xs"
+                            onError={(e) => {
+                              (e.target as HTMLElement).style.display = "none";
+                            }}
+                          />
+                        ) : (
+                          <div
+                            className={`w-8 h-8 rounded-full bg-gradient-to-br ${avatarGrad} flex items-center justify-center text-xs font-black shrink-0 shadow-xs`}
+                          >
+                            {clientInitials}
+                          </div>
                         )}
+                        <div className="min-w-0">
+                          <h3 className="font-extrabold text-xs sm:text-sm text-foreground truncate group-hover/card:text-brand-orange transition-colors">
+                            {client.name}
+                          </h3>
+                          {client.contactName && (
+                            <p className="text-[10px] text-text-secondary font-medium truncate flex items-center gap-1">
+                              <IconUser className="h-3 w-3 text-text-secondary/70" />
+                              {client.contactName}
+                            </p>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                    {/* Visual Chevron Link */}
-                    <div className="text-stone-400 group-hover/card:text-brand-orange p-0.5 rounded-full group-hover/card:bg-stone-50 transition-all duration-200 shrink-0">
-                      <IconChevronRight className="h-3.5 w-3.5" />
-                    </div>
-                  </div>
 
-                  {/* Phone Numbers Bar */}
-                  {(client.phone || client.secondaryPhone) && (
-                    <div className="flex flex-wrap items-center gap-1 text-[10px] font-semibold text-text-secondary">
-                      {client.phone && (
-                        <span className="inline-flex items-center gap-0.5 bg-surface-page px-1.5 py-0.5 rounded border border-border/60">
-                          <IconPhone className="h-2.5 w-2.5 text-brand-orange" />
-                          <span>{client.phone}</span>
-                        </span>
-                      )}
-                      {client.secondaryPhone && (
-                        <span className="inline-flex items-center gap-0.5 bg-surface-page px-1.5 py-0.5 rounded border border-border/60 text-text-secondary/80">
-                          <IconPhone className="h-2.5 w-2.5 text-stone-400" />
-                          <span>{client.secondaryPhone}</span>
-                        </span>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Inner Panel for Projects */}
-                  <div className="bg-stone-50/60 border border-border/60 rounded-lg p-2 space-y-1 group-hover/card:border-brand-orange-tint transition-all duration-200">
-                    <div className="flex items-center justify-between text-[9px] font-extrabold text-text-secondary uppercase tracking-wider">
-                      <span>Projects</span>
-                      <span className="bg-surface-white px-1.5 py-0.5 rounded border border-border/60 font-bold text-text-primary text-[9px]">
-                        {client.projects.length}
+                      {/* Touch chevron */}
+                      <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-surface-page text-text-secondary group-hover/card:bg-brand-orange/10 group-hover/card:text-brand-orange transition-all shrink-0">
+                        <IconChevronRight className="h-3.5 w-3.5" />
                       </span>
                     </div>
 
-                    {client.projects.length > 0 ? (
-                      <div className="space-y-0.5">
-                        {client.projects.slice(0, 2).map((proj) => {
-                          const statusConf = getStatusConfig(proj.status);
-                          return (
-                            <div
-                              key={proj.id}
-                              className="flex items-center justify-between gap-2 py-0.5"
-                            >
-                              <span className="font-semibold text-stone-800 truncate flex-1 min-w-0 text-[10px]">
-                                {proj.name}
-                              </span>
-                              <span
-                                className={`inline-flex items-center gap-0.5 text-[8px] font-extrabold px-1.5 py-0.5 rounded-full uppercase tracking-wider shrink-0 ${statusConf.badge}`}
-                              >
-                                <span className={`w-1 h-1 rounded-full ${statusConf.dot}`} />
-                                {proj.status.toLowerCase()}
-                              </span>
-                            </div>
-                          );
-                        })}
-                        {client.projects.length > 2 && (
-                          <div className="text-right text-[9px] font-bold text-brand-orange group-hover/card:underline">
-                            + {client.projects.length - 2} more
-                          </div>
-                        )}
+                    {/* Phone & Location Metadata */}
+                    <div className="space-y-1 pt-1 border-t border-border-custom/40">
+                      {client.phone && (
+                        <div className="text-[11px] text-text-secondary font-medium flex items-center justify-between">
+                          <span className="flex items-center gap-1 text-text-secondary/80">
+                            <IconPhone className="h-3 w-3 text-brand-orange" /> {client.phone}
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between text-[10px] text-text-secondary font-normal">
+                        <span>Added {getRelativeTime(client.createdAt)}</span>
+                        {client.city && <span className="font-bold text-foreground">{client.city}</span>}
                       </div>
-                    ) : (
-                      <div className="py-1 text-center text-[9px] text-stone-400 font-semibold italic">
-                        No active projects
-                      </div>
-                    )}
-                  </div>
-                </Link>
-
-                {/* Compact Card Footer */}
-                <div className="flex items-center justify-between text-[9px] text-text-secondary mt-2 pt-2 border-t border-border/50">
-                  <span className="font-medium text-stone-400">
-                    {getRelativeTime(client.createdAt)}
-                  </span>
-                  <Link
-                    href={`/projects/new?clientId=${client.id}`}
-                    className="font-extrabold text-brand-orange hover:text-brand-orange-hover transition-colors text-[10px]"
-                  >
-                    + New Project
+                    </div>
                   </Link>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="bg-surface-white border border-border rounded-xl p-10 text-center shadow-2xs">
-          <div className="inline-block p-2.5 bg-brand-orange-tint text-brand-orange rounded-full mb-3">
-            <IconAlertCircle className="h-5 w-5" />
-          </div>
-          <h3 className="text-xs font-bold text-text-primary">No clients found</h3>
-          <p className="text-[11px] text-text-secondary mt-1">
-            Try adjusting your search query or add a new client profile.
-          </p>
-        </div>
-      )}
 
-      {/* PAGINATION FOOTER */}
-      {filteredClients.length > itemsPerPage && (
-        <div className="flex items-center justify-between pt-3 border-t border-border/60 select-none">
-          <span className="text-[11px] text-text-secondary font-medium">
-            Showing <span className="font-bold text-text-primary">{startIndex + 1}</span>-
-            <span className="font-bold text-text-primary">{endIndex}</span> of{" "}
-            <span className="font-bold text-text-primary">{filteredClients.length}</span> clients
-          </span>
+                  {/* Projects Badge Footer */}
+                  <div className="pt-2.5 mt-2 border-t border-border-custom/50 flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider flex items-center gap-1">
+                      <IconBriefcase className="h-3 w-3 text-blue-500" />
+                      {client.projects.length} {client.projects.length === 1 ? "Project" : "Projects"}
+                    </span>
+                    <Link
+                      href={`/clients/${client.id}`}
+                      className="text-[11px] font-bold text-brand-orange hover:text-brand-orange-hover flex items-center gap-0.5 cursor-pointer touch-manipulation active:scale-95 transition-transform"
+                    >
+                      <span>View Profile</span>
+                      <IconChevronRight className="h-3 w-3" />
+                    </Link>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </motion.div>
+        ) : (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="flex flex-col items-center justify-center py-12 px-4 text-center rounded-xl border border-dashed border-border-custom bg-surface-white/60"
+          >
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-surface-page border border-border-custom shadow-2xs mb-3">
+              <IconBuilding className="h-6 w-6 text-text-secondary/70" />
+            </div>
+            <h3 className="text-xs font-bold text-foreground mb-0.5">No clients found</h3>
+            <p className="text-[11px] text-text-secondary mb-4 max-w-xs leading-relaxed">
+              No matching client profiles found. Add your first client to manage projects &amp; invoices.
+            </p>
+            <Button
+              size="sm"
+              onClick={() => setIsSheetOpen(true)}
+              className="gap-1.5 shadow-xs bg-brand-orange hover:bg-brand-orange-hover text-white text-xs font-semibold rounded-lg active:scale-95 transition-all py-1 px-3 cursor-pointer"
+            >
+              <IconPlus className="h-3.5 w-3.5" /> Add Client
+            </Button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
+      {/* ─── PAGINATION ─── */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between pt-2 text-xs text-text-secondary">
+          <span>Showing {startIndex + 1}-{endIndex} of {filteredClients.length} clients</span>
           <div className="flex items-center gap-1.5">
-            <Button
-              variant="outline"
-              size="sm"
+            <button
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               disabled={currentPage === 1}
-              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-              className="h-7 text-[11px] font-semibold px-3 rounded-lg bg-surface-white border border-border hover:bg-surface-page cursor-pointer active:scale-[0.96] transition-all"
+              className="px-2.5 py-1 rounded-lg border border-border-custom bg-surface-white hover:bg-surface-page disabled:opacity-40 disabled:cursor-not-allowed font-bold cursor-pointer transition active:scale-95"
             >
-              &lt; Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
+              Prev
+            </button>
+            <span className="font-bold text-foreground px-2">{currentPage} / {totalPages}</span>
+            <button
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
-              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-              className="h-7 text-[11px] font-semibold px-3 rounded-lg bg-surface-white border border-border hover:bg-surface-page cursor-pointer active:scale-[0.96] transition-all"
+              className="px-2.5 py-1 rounded-lg border border-border-custom bg-surface-white hover:bg-surface-page disabled:opacity-40 disabled:cursor-not-allowed font-bold cursor-pointer transition active:scale-95"
             >
-              Next &gt;
-            </Button>
+              Next
+            </button>
           </div>
         </div>
       )}

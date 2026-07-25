@@ -23,7 +23,7 @@ export async function createClient(data: CreateClientInput) {
       throw new Error("Company name is required");
     }
 
-    await prisma.client.create({
+    const newClient = await prisma.client.create({
       data: {
         name: data.name,
         logo: data.logo || null,
@@ -42,7 +42,7 @@ export async function createClient(data: CreateClientInput) {
     revalidatePath("/clients");
     revalidateTag("clients");
     revalidateTag("dashboard-metrics");
-    return { success: true };
+    return { success: true, data: newClient };
   } catch (error) {
     console.error("Failed to create client:", error);
     return { success: false, error: error instanceof Error ? error.message : "Failed to create client" };

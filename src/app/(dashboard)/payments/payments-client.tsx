@@ -22,6 +22,7 @@ import {
   IconArrowUpRight 
 } from "@tabler/icons-react";
 import { PaymentMethod } from "@/lib/enums";
+import { toast } from "@/components/ui/toast-provider";
 
 type PaymentsClientProps = {
   initialPayments: PaymentRow[];
@@ -60,9 +61,12 @@ export function PaymentsClient({
       const result = await createPayment(data);
       if (result.success) {
         setIsSheetOpen(false);
+        toast.success("Payment Received! 💰", `${formatCurrency(data.amount)} recorded & receipt generated.`);
         router.refresh();
       } else {
-        setErrorMsg(result.error || "Failed to log payment.");
+        const err = result.error || "Failed to log payment.";
+        setErrorMsg(err);
+        toast.error("Payment Failed", err);
       }
     });
   };

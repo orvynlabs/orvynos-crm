@@ -1,59 +1,65 @@
 "use server";
 
 import { prisma } from "@/lib/db";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, unstable_cache } from "next/cache";
 import { auth } from "@/auth";
 import { DocumentType } from "@/lib/enums";
 
 export async function getDocuments() {
-  try {
-    const docs = await prisma.document.findMany({
-      orderBy: {
-        createdAt: "desc",
-      },
-      include: {
-        project: {
-          select: {
-            id: true,
-            name: true,
+  return unstable_cache(
+    async () => {
+      try {
+        const docs = await prisma.document.findMany({
+          orderBy: {
+            createdAt: "desc",
           },
-        },
-        client: {
-          select: {
-            id: true,
-            name: true,
+          include: {
+            project: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+            client: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+            uploadedBy: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
           },
-        },
-        uploadedBy: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
-    });
+        });
 
-    return {
-      success: true,
-      data: docs.map((d) => ({
-        id: d.id,
-        name: d.name,
-        type: d.type,
-        r2Key: d.r2Key,
-        mimeType: d.mimeType || "application/octet-stream",
-        size: d.size || 0,
-        projectId: d.projectId,
-        projectName: d.project?.name || null,
-        clientId: d.clientId,
-        clientName: d.client?.name || null,
-        uploadedBy: d.uploadedBy?.name || "System",
-        createdAt: d.createdAt.toISOString(),
-      })),
-    };
-  } catch (error: any) {
-    console.error("Failed to fetch documents:", error);
-    return { success: false, error: error?.message || "Failed to fetch documents", data: [] };
-  }
+        return {
+          success: true,
+          data: docs.map((d) => ({
+            id: d.id,
+            name: d.name,
+            type: d.type,
+            r2Key: d.r2Key,
+            mimeType: d.mimeType || "application/octet-stream",
+            size: d.size || 0,
+            projectId: d.projectId,
+            projectName: d.project?.name || null,
+            clientId: d.clientId,
+            clientName: d.client?.name || null,
+            uploadedBy: d.uploadedBy?.name || "System",
+            createdAt: d.createdAt.toISOString(),
+          })),
+        };
+      } catch (error: any) {
+        console.error("Failed to fetch documents:", error);
+        return { success: false, error: error?.message || "Failed to fetch documents", data: [] };
+      }
+    },
+    ["documents-data-v1"],
+    { revalidate: 30, tags: ["documents"] }
+  )();
 }
 
 export async function getProjectsAndClients() {

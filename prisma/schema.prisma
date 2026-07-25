@@ -432,6 +432,8 @@ model Document {
   @@index([clientId])
   @@index([projectId])
   @@index([type])
+  @@index([clientId, type])
+  @@index([projectId, type])
 }
 
 model DocumentVersion {

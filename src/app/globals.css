@@ -69,12 +69,12 @@
 }
 
 .dark {
-  --surface-page: #1C1917; /* Dark warm gray background */
-  --surface-white: #292524; /* Dark warm gray card background */
-  --text-primary: #F5F5F4; /* Light warm gray primary text */
-  --text-secondary: #A8A29E; /* Light warm gray secondary text */
-  --border: #44403C; /* Darker border */
-  --brand-orange-tint: #4C1A0E; /* Deep orange tint */
+  --surface-page: #12100E; /* Sleek obsidian dark background */
+  --surface-white: #1C1917; /* Dark card surface */
+  --text-primary: #FAFAFA; /* Bright light primary text */
+  --text-secondary: #A8A29E; /* Muted secondary text */
+  --border: #292524; /* Crisp dark border */
+  --brand-orange-tint: #3B1207; /* Deep orange tint */
 }
 
 @theme {
@@ -248,6 +248,25 @@ body {
 .touch-bounce:active {
   transform: scale(0.97);
   transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Mobile safe-area insets & touch optimization ── */
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  overflow-x: hidden;
+  overflow-y: auto !important;
+  touch-action: manipulation;
+}
+
+.pb-safe {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
 }
 
 /* ── Marquee Animation for Co-Founders showcase ── */

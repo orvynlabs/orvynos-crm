@@ -26,7 +26,9 @@ export async function GET(
     }
 
     // ⚡ 1. Check Sub-Millisecond In-Memory Cache (< 1ms)
-    const cached = fileCache.get(key);
+    // Skip cache for PDFs — they get regenerated frequently and must always be fresh
+    const isPdf = key.endsWith('.pdf');
+    const cached = isPdf ? undefined : fileCache.get(key);
     if (cached) {
       const clientEtag = request.headers.get("if-none-match");
       if (clientEtag === cached.etag) {
@@ -61,14 +63,14 @@ export async function GET(
       const ext = path.extname(targetFile).toLowerCase();
       const contentType = getContentType(ext);
 
-      // Cache for instant future requests
-      setCacheItem(key, fileBuffer, contentType, etag);
+      // Cache non-PDF assets for instant future requests
+      if (!isPdf) setCacheItem(key, fileBuffer, contentType, etag);
 
       return new NextResponse(fileBuffer as any, {
         headers: {
           "Content-Type": contentType,
-          "Cache-Control": "public, max-age=31536000, immutable",
-          ETag: etag,
+          "Cache-Control": isPdf ? "no-store, no-cache, must-revalidate" : "public, max-age=31536000, immutable",
+          ...(isPdf ? {} : { ETag: etag }),
         },
       });
     }
@@ -80,13 +82,13 @@ export async function GET(
         const ext = path.extname(key).toLowerCase();
         const contentType = getContentType(ext);
 
-        setCacheItem(key, cloudBuffer, contentType, etag);
+        if (!isPdf) setCacheItem(key, cloudBuffer, contentType, etag);
 
         return new NextResponse(cloudBuffer as any, {
           headers: {
             "Content-Type": contentType,
-            "Cache-Control": "public, max-age=31536000, immutable",
-            ETag: etag,
+            "Cache-Control": isPdf ? "no-store, no-cache, must-revalidate" : "public, max-age=31536000, immutable",
+            ...(isPdf ? {} : { ETag: etag }),
           },
         });
       } catch (e) {

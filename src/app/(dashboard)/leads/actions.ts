@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/db";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, unstable_cache } from "next/cache";
 import { LeadStage } from "@/lib/enums";
 
 export type CreateLeadInput = {
@@ -21,44 +21,50 @@ export type UpdateLeadInput = Partial<CreateLeadInput> & {
 };
 
 export async function getLeads() {
-  try {
-    const leads = await prisma.lead.findMany({
-      orderBy: [
-        { stage: "asc" },
-        { sortOrder: "asc" },
-        { createdAt: "desc" },
-      ],
-      include: {
-        convertedClient: {
-          select: { id: true, name: true },
-        },
-      },
-    });
+  return unstable_cache(
+    async () => {
+      try {
+        const leads = await prisma.lead.findMany({
+          orderBy: [
+            { stage: "asc" },
+            { sortOrder: "asc" },
+            { createdAt: "desc" },
+          ],
+          include: {
+            convertedClient: {
+              select: { id: true, name: true },
+            },
+          },
+        });
 
-    return {
-      success: true,
-      data: leads.map((l) => ({
-        id: l.id,
-        name: l.name,
-        company: l.company,
-        email: l.email,
-        phone: l.phone,
-        source: l.source,
-        stage: l.stage as LeadStage,
-        sortOrder: l.sortOrder,
-        estimatedValue: l.estimatedValue ? Number(l.estimatedValue) : 0,
-        notes: l.notes,
-        followUpAt: l.followUpAt ? l.followUpAt.toISOString() : null,
-        convertedClientId: l.convertedClientId,
-        convertedClient: l.convertedClient ? { id: l.convertedClient.id, name: l.convertedClient.name } : null,
-        createdAt: l.createdAt.toISOString(),
-        updatedAt: l.updatedAt.toISOString(),
-      })),
-    };
-  } catch (error: any) {
-    console.error("Failed to fetch leads:", error);
-    return { success: false, error: error.message };
-  }
+        return {
+          success: true,
+          data: leads.map((l) => ({
+            id: l.id,
+            name: l.name,
+            company: l.company,
+            email: l.email,
+            phone: l.phone,
+            source: l.source,
+            stage: l.stage as LeadStage,
+            sortOrder: l.sortOrder,
+            estimatedValue: l.estimatedValue ? Number(l.estimatedValue) : 0,
+            notes: l.notes,
+            followUpAt: l.followUpAt ? l.followUpAt.toISOString() : null,
+            convertedClientId: l.convertedClientId,
+            convertedClient: l.convertedClient ? { id: l.convertedClient.id, name: l.convertedClient.name } : null,
+            createdAt: l.createdAt.toISOString(),
+            updatedAt: l.updatedAt.toISOString(),
+          })),
+        };
+      } catch (error: any) {
+        console.error("Failed to fetch leads:", error);
+        return { success: false, error: error?.message || "Failed to fetch leads", data: [] };
+      }
+    },
+    ["leads-data-v1"],
+    { revalidate: 30, tags: ["leads"] }
+  )();
 }
 
 export async function createLead(input: CreateLeadInput) {

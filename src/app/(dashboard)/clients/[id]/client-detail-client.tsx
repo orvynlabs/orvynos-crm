@@ -26,8 +26,12 @@ import {
   IconLoader,
   IconSearch,
   IconCheck,
+  IconEye,
+  IconX,
 } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
+import { toast } from "@/components/ui/toast-provider";
+import { confirmModal } from "@/components/ui/confirm-provider";
 import {
   Sheet,
   SheetContent,
@@ -39,6 +43,7 @@ import {
 import { ClientForm, type ClientFormValues } from "@/components/clients/client-form";
 import { updateClient } from "../actions";
 import { createDocument, deleteDocument } from "../../documents/actions";
+import { deleteGeneratorItem } from "../../generators/actions";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -92,6 +97,34 @@ type DocumentItem = {
   createdAt: string;
 };
 
+type ProposalItem = {
+  id: string;
+  number: string;
+  title: string;
+  amount: number | null;
+  status: string;
+  pdfKey: string | null;
+  createdAt: string;
+};
+
+type InvoiceItem = {
+  id: string;
+  number: string;
+  total: number;
+  status: string;
+  pdfKey: string | null;
+  createdAt: string;
+};
+
+type AgreementItem = {
+  id: string;
+  number: string;
+  title: string;
+  status: string;
+  pdfKey: string | null;
+  createdAt: string;
+};
+
 type Client = {
   id: string;
   name: string;
@@ -110,6 +143,9 @@ type Client = {
   payments: Payment[];
   notes: ClientNote[];
   documents: DocumentItem[];
+  proposals?: ProposalItem[];
+  invoices?: InvoiceItem[];
+  agreements?: AgreementItem[];
 };
 
 type ClientDetailClientProps = {
@@ -140,8 +176,37 @@ export function ClientDetailClient({ client }: ClientDetailClientProps) {
   const [isPending, startTransition] = useTransition();
   const [errorMsg, setErrorMsg] = useState("");
 
-  // Documents Management State
+  // Documents & Generator State
   const [documents, setDocuments] = useState<DocumentItem[]>(client.documents || []);
+  const [proposals, setProposals] = useState<ProposalItem[]>(client.proposals || []);
+  const [invoices, setInvoices] = useState<InvoiceItem[]>(client.invoices || []);
+  const [agreements, setAgreements] = useState<AgreementItem[]>(client.agreements || []);
+  const [previewModal, setPreviewModal] = useState<{ open: boolean; title: string; pdfKey: string | null }>({
+    open: false, title: "", pdfKey: null,
+  });
+
+  const handleDeleteGenItem = async (id: string, type: "proposal" | "invoice" | "agreement") => {
+    const ok = await confirmModal({
+      title: `Delete ${type.charAt(0).toUpperCase() + type.slice(1)}?`,
+      description: `Are you sure you want to delete this ${type}? This action cannot be undone.`,
+      confirmText: `Delete ${type.charAt(0).toUpperCase() + type.slice(1)}`,
+      variant: "danger",
+    });
+    if (!ok) return;
+
+    startTransition(async () => {
+      const res = await deleteGeneratorItem(id, type);
+      if (res.success) {
+        if (type === "proposal") setProposals(prev => prev.filter(p => p.id !== id));
+        else if (type === "invoice") setInvoices(prev => prev.filter(i => i.id !== id));
+        else setAgreements(prev => prev.filter(a => a.id !== id));
+        toast.warning("Document Deleted", `The ${type} record was deleted.`);
+      } else {
+        toast.error("Delete Failed", res.error || `Failed to delete ${type}`);
+      }
+    });
+  };
+
   const [docSearchQuery, setDocSearchQuery] = useState("");
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
@@ -242,25 +307,35 @@ export function ClientDetailClient({ client }: ClientDetailClientProps) {
 
         setDocuments((prev) => [newDoc, ...prev]);
         setIsUploadSheetOpen(false);
+        toast.success("Document Uploaded", `${newDocName} added to client vault.`);
         setNewDocName("");
         setNewDocUrl("");
         setNewDocSize(0);
         setUploadProgress(0);
       } else {
-        setUploadError(res.error || "Failed to save file metadata");
+        const err = res.error || "Failed to save file metadata";
+        setUploadError(err);
+        toast.error("Upload Failed", err);
       }
     });
   };
 
-  const handleDeleteDocument = (id: string) => {
-    if (!confirm("Are you sure you want to delete this document?")) return;
+  const handleDeleteDocument = async (id: string) => {
+    const ok = await confirmModal({
+      title: "Delete Client Document?",
+      description: "Are you sure you want to delete this document from the client vault? This action cannot be undone.",
+      confirmText: "Delete Document",
+      variant: "danger",
+    });
+    if (!ok) return;
 
     startTransition(async () => {
       const res = await deleteDocument(id);
       if (res.success) {
         setDocuments((prev) => prev.filter((d) => d.id !== id));
+        toast.warning("Document Deleted", "Client document removed.");
       } else {
-        alert(res.error || "Failed to delete file");
+        toast.error("Delete Failed", res.error || "Failed to delete file");
       }
     });
   };
@@ -334,8 +409,11 @@ export function ClientDetailClient({ client }: ClientDetailClientProps) {
       const res = await updateClient(client.id, values);
       if (res.success) {
         setIsSheetOpen(false);
+        toast.success("Client Updated", `${values.name} profile updated.`);
       } else {
-        setErrorMsg(res.error || "Failed to update profile.");
+        const err = res.error || "Failed to update profile.";
+        setErrorMsg(err);
+        toast.error("Update Failed", err);
       }
     });
   };
@@ -351,37 +429,37 @@ export function ClientDetailClient({ client }: ClientDetailClientProps) {
       </Link>
 
       {/* Hero Client Card */}
-      <div className="bg-surface-white border border-border rounded-xl p-6 shadow-sm relative">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-1">
-            <div className="flex items-center gap-3">
+      <div className="bg-surface-white border border-border-custom rounded-xl p-4 sm:p-5 shadow-2xs relative">
+        <div className="flex flex-col gap-3.5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-0.5">
+            <div className="flex items-center gap-2.5">
               {client.logo && (
                 <img
                   src={client.logo}
                   alt={client.name}
-                  className="w-10 h-10 md:w-12 md:h-12 rounded-lg object-cover border border-border shrink-0 shadow-xs"
+                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg object-cover border border-border-custom shrink-0 shadow-2xs"
                   onError={(e) => {
                     (e.target as HTMLElement).style.display = "none";
                   }}
                 />
               )}
-              <div className="flex items-center gap-2.5">
-                <h1 className="text-xl md:text-2xl font-extrabold tracking-tight text-text-primary capitalize">
+              <div className="flex items-center gap-2">
+                <h1 className="text-base sm:text-lg font-bold tracking-tight text-foreground capitalize">
                   {client.name}
                 </h1>
-                <span className="text-[9.5px] md:text-[11px] font-extrabold bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                <span className="text-[9px] font-extrabold bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full uppercase tracking-wider border border-emerald-200/50">
                   Active Partner
                 </span>
               </div>
             </div>
             {client.contactName && (
-              <p className="text-xs md:text-sm font-bold text-text-secondary">
+              <p className="text-[11px] sm:text-xs font-semibold text-text-secondary pl-0.5">
                 Primary Contact: {client.contactName}
               </p>
             )}
           </div>
 
-          <div className="flex items-center gap-3 self-start sm:self-auto">
+          <div className="flex items-center gap-2.5 self-start sm:self-auto">
             {/* Edit Drawer sheet */}
             <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
               <SheetTrigger
@@ -389,19 +467,19 @@ export function ClientDetailClient({ client }: ClientDetailClientProps) {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-8 border-border bg-surface-white hover:bg-surface-page font-bold text-xs cursor-pointer select-none shadow-sm"
+                    className="h-7.5 border-border-custom bg-surface-white hover:bg-surface-page font-bold text-xs cursor-pointer select-none shadow-2xs active:scale-95 transition-all"
                   >
                     Edit Client
                   </Button>
                 }
               />
-              <SheetContent className="w-full max-w-[450px] p-6 bg-surface-white border-l border-border h-full flex flex-col justify-between overflow-y-auto">
+              <SheetContent className="w-full max-w-[450px] p-5 bg-surface-white border-l border-border h-full flex flex-col justify-between overflow-y-auto">
                 <div className="space-y-6">
                   <SheetHeader>
-                    <SheetTitle className="text-lg font-bold text-text-primary">
+                    <SheetTitle className="text-base font-bold text-text-primary">
                       Edit Client Profile
                     </SheetTitle>
-                    <SheetDescription className="text-xs text-text-secondary mt-1">
+                    <SheetDescription className="text-xs text-text-secondary mt-0.5">
                       Update this client&apos;s profile details. Fields with * are required.
                     </SheetDescription>
                   </SheetHeader>
@@ -429,53 +507,53 @@ export function ClientDetailClient({ client }: ClientDetailClientProps) {
               </SheetContent>
             </Sheet>
 
-            <span className="text-[10px] md:text-xs text-text-secondary font-bold">
+            <span className="text-[10px] text-text-secondary font-semibold">
               Registered: {new Date(client.createdAt).toLocaleDateString("en-IN")}
             </span>
           </div>
         </div>
 
         {/* Info Grid */}
-        <div className="grid gap-4 mt-6 sm:grid-cols-2 md:grid-cols-3 pt-6 border-t border-border/60 text-[11px] md:text-xs">
+        <div className="grid gap-3 mt-4 sm:grid-cols-2 md:grid-cols-3 pt-4 border-t border-border-custom/60 text-[11px] font-medium">
           {client.email && (
-            <div className="flex items-center gap-2.5 text-text-primary">
-              <IconMail className="h-4.5 w-4.5 md:h-5 md:w-5 text-text-secondary" />
-              <a href={`mailto:${client.email}`} className="hover:text-brand-orange font-semibold">
+            <div className="flex items-center gap-2 text-text-primary">
+              <IconMail className="h-4 w-4 text-text-secondary shrink-0" />
+              <a href={`mailto:${client.email}`} className="hover:text-brand-orange font-semibold truncate">
                 {client.email}
               </a>
             </div>
           )}
           {client.phone && (
-            <div className="flex items-center gap-2.5 text-text-primary">
-              <IconPhone className="h-4.5 w-4.5 md:h-5 md:w-5 text-text-secondary" />
-              <a href={`tel:${client.phone}`} className="hover:text-brand-orange font-semibold">
+            <div className="flex items-center gap-2 text-text-primary">
+              <IconPhone className="h-4 w-4 text-text-secondary shrink-0" />
+              <a href={`tel:${client.phone}`} className="hover:text-brand-orange font-semibold truncate">
                 {client.phone}
               </a>
             </div>
           )}
           {client.website && (
-            <div className="flex items-center gap-2.5 text-text-primary">
-              <IconWorld className="h-4.5 w-4.5 md:h-5 md:w-5 text-text-secondary" />
+            <div className="flex items-center gap-2 text-text-primary">
+              <IconWorld className="h-4 w-4 text-text-secondary shrink-0" />
               <a
                 href={client.website}
                 target="_blank"
                 rel="noreferrer"
-                className="hover:text-brand-orange font-semibold"
+                className="hover:text-brand-orange font-semibold truncate"
               >
                 {client.website.replace(/^https?:\/\//, "")}
               </a>
             </div>
           )}
           {client.gstin && (
-            <div className="flex items-center gap-2.5 text-text-primary">
-              <IconReceipt className="h-4.5 w-4.5 md:h-5 md:w-5 text-text-secondary" />
-              <span className="font-semibold uppercase">GSTIN: {client.gstin}</span>
+            <div className="flex items-center gap-2 text-text-primary">
+              <IconReceipt className="h-4 w-4 text-text-secondary shrink-0" />
+              <span className="font-semibold uppercase truncate">GSTIN: {client.gstin}</span>
             </div>
           )}
           {(client.address || client.city) && (
-            <div className="flex items-center gap-2.5 text-text-primary sm:col-span-2">
-              <IconMapPin className="h-4.5 w-4.5 md:h-5 md:w-5 text-text-secondary" />
-              <span className="font-semibold text-text-secondary">
+            <div className="flex items-center gap-2 text-text-primary sm:col-span-2">
+              <IconMapPin className="h-4 w-4 text-text-secondary shrink-0" />
+              <span className="font-semibold text-text-secondary truncate">
                 {client.address && `${client.address}, `}
                 {client.city}
                 {client.state && `, ${client.state}`}
@@ -486,43 +564,43 @@ export function ClientDetailClient({ client }: ClientDetailClientProps) {
       </div>
 
       {/* METRIC GRID PANEL */}
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-        <div className="bg-surface-white border border-border rounded-xl p-4 shadow-sm">
-          <span className="text-[10px] md:text-xs font-bold text-text-secondary uppercase tracking-wider block">
+      <div className="grid gap-2.5 grid-cols-2 lg:grid-cols-4">
+        <div className="bg-surface-white border border-border-custom rounded-xl p-3 sm:p-3.5 shadow-2xs">
+          <span className="text-[10px] font-extrabold text-text-secondary uppercase tracking-wider block">
             Total Projects
           </span>
-          <span className="text-xl md:text-3xl font-extrabold text-text-primary mt-1 block">
+          <span className="text-lg sm:text-xl font-extrabold text-foreground mt-0.5 block">
             {totalProjects}
           </span>
         </div>
-        <div className="bg-surface-white border border-border rounded-xl p-4 shadow-sm">
-          <span className="text-[10px] md:text-xs font-bold text-text-secondary uppercase tracking-wider block">
+        <div className="bg-surface-white border border-border-custom rounded-xl p-3 sm:p-3.5 shadow-2xs">
+          <span className="text-[10px] font-extrabold text-text-secondary uppercase tracking-wider block">
             Active Projects
           </span>
-          <span className="text-xl md:text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-1 block">
+          <span className="text-lg sm:text-xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-0.5 block">
             {activeProjects}
           </span>
         </div>
-        <div className="bg-surface-white border border-border rounded-xl p-4 shadow-sm">
-          <span className="text-[10px] md:text-xs font-bold text-text-secondary uppercase tracking-wider block">
+        <div className="bg-surface-white border border-border-custom rounded-xl p-3 sm:p-3.5 shadow-2xs">
+          <span className="text-[10px] font-extrabold text-text-secondary uppercase tracking-wider block">
             Collected Revenue
           </span>
-          <span className="text-xl md:text-3xl font-extrabold text-text-primary mt-1 block">
+          <span className="text-lg sm:text-xl font-extrabold text-foreground mt-0.5 block">
             ₹{totalCollected.toLocaleString("en-IN")}
           </span>
         </div>
-        <div className="bg-surface-white border border-border rounded-xl p-4 shadow-sm">
-          <span className="text-[10px] md:text-xs font-bold text-text-secondary uppercase tracking-wider block">
+        <div className="bg-surface-white border border-border-custom rounded-xl p-3 sm:p-3.5 shadow-2xs">
+          <span className="text-[10px] font-extrabold text-text-secondary uppercase tracking-wider block">
             Pending Balance
           </span>
-          <span className="text-xl md:text-3xl font-extrabold text-amber-600 dark:text-amber-400 mt-1 block">
+          <span className="text-lg sm:text-xl font-extrabold text-amber-600 dark:text-amber-400 mt-0.5 block">
             ₹{totalPending.toLocaleString("en-IN")}
           </span>
         </div>
       </div>
 
       {/* TAB NAVIGATION - Styled as Segmented Slider control */}
-      <div className="bg-stone-100/80 p-1.5 rounded-xl flex w-full md:w-max gap-1 select-none overflow-x-auto scrollbar-hide">
+      <div className="bg-stone-100/80 p-1 rounded-xl flex w-full md:w-max gap-1 select-none overflow-x-auto scrollbar-hide border border-border-custom/50">
         {TABS.map((tab) => {
           const isActive = activeTab === tab.key;
           return (
@@ -530,26 +608,31 @@ export function ClientDetailClient({ client }: ClientDetailClientProps) {
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
               className={`
-                flex-1 md:flex-none px-5 py-2 font-bold text-xs md:text-sm rounded-lg cursor-pointer transition-all duration-200 whitespace-nowrap min-h-[36px] flex items-center justify-center gap-1.5
+                flex-1 md:flex-none px-3.5 py-1.5 font-bold text-[11px] sm:text-xs rounded-lg cursor-pointer transition-all duration-200 whitespace-nowrap min-h-[32px] flex items-center justify-center gap-1.5 active:scale-95
                 ${
                   isActive
-                    ? "bg-white text-brand-orange shadow-sm"
+                    ? "bg-surface-white text-brand-orange shadow-2xs"
                     : "text-text-secondary hover:text-text-primary"
                 }
               `}
               style={{ WebkitTapHighlightColor: "transparent" }}
             >
-              <tab.icon className="h-4 w-4" stroke={1.75} />
+              <tab.icon className="h-3.5 w-3.5" stroke={2} />
               {tab.label}
               {/* Badge counts for projects and payments */}
               {tab.key === "projects" && client.projects.length > 0 && (
-                <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-full ${isActive ? "bg-brand-orange-tint text-brand-orange" : "bg-stone-200/60 text-text-secondary"}`}>
+                <span className={`text-[9px] font-extrabold px-1.5 py-0.2 rounded-full ${isActive ? "bg-brand-orange/10 text-brand-orange" : "bg-stone-200/60 text-text-secondary"}`}>
                   {client.projects.length}
                 </span>
               )}
               {tab.key === "payments" && client.payments.length > 0 && (
-                <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-full ${isActive ? "bg-brand-orange-tint text-brand-orange" : "bg-stone-200/60 text-text-secondary"}`}>
+                <span className={`text-[9px] font-extrabold px-1.5 py-0.2 rounded-full ${isActive ? "bg-brand-orange/10 text-brand-orange" : "bg-stone-200/60 text-text-secondary"}`}>
                   {client.payments.length}
+                </span>
+              )}
+              {tab.key === "documents" && (documents.length + proposals.length + invoices.length + agreements.length) > 0 && (
+                <span className={`text-[9px] font-extrabold px-1.5 py-0.2 rounded-full ${isActive ? "bg-brand-orange/10 text-brand-orange" : "bg-brand-orange-tint text-brand-orange"}`}>
+                  {documents.length + proposals.length + invoices.length + agreements.length}
                 </span>
               )}
             </button>
@@ -901,7 +984,189 @@ export function ClientDetailClient({ client }: ClientDetailClientProps) {
 
       {/* — DOCUMENTS TAB — */}
       {activeTab === "documents" && (
-        <div className="animate-in fade-in duration-200 space-y-4">
+        <div className="animate-in fade-in duration-200 space-y-6">
+          {/* Document Vault Summary Banner */}
+          <div className="bg-surface-white border border-border/80 rounded-2xl p-4.5 flex flex-wrap items-center justify-between gap-3 shadow-2xs">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-brand-orange-tint text-brand-orange flex items-center justify-center font-extrabold shrink-0 shadow-2xs">
+                <IconFileText className="h-5 w-5 stroke-[2.2]" />
+              </div>
+              <div>
+                <h3 className="text-sm font-extrabold text-text-primary flex items-center gap-2">
+                  <span>Client Document Vault</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-brand-orange bg-brand-orange-tint px-2.5 py-0.5 rounded-full border border-brand-orange/20 shadow-2xs">
+                    {documents.length + proposals.length + invoices.length + agreements.length} Total Records
+                  </span>
+                </h3>
+                <p className="text-[11px] font-medium text-text-secondary mt-0.5">
+                  Exclusive documents, generated PDFs, proposals, invoices, and uploaded files for {client.name}.
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-bold text-text-secondary">
+              <span className="px-2.5 py-1 rounded-xl bg-surface-page border border-border/60 text-violet-600 dark:text-violet-400">
+                📄 {proposals.length} Proposals
+              </span>
+              <span className="px-2.5 py-1 rounded-xl bg-surface-page border border-border/60 text-blue-600 dark:text-blue-400">
+                🧾 {invoices.length} Invoices
+              </span>
+              <span className="px-2.5 py-1 rounded-xl bg-surface-page border border-border/60 text-emerald-600 dark:text-emerald-400">
+                📑 {agreements.length} Contracts
+              </span>
+              <span className="px-2.5 py-1 rounded-xl bg-surface-page border border-border/60 text-brand-orange">
+                📁 {documents.length} Client Files
+              </span>
+            </div>
+          </div>
+
+          {/* Generated Proposals & Business Documents */}
+          {((proposals.length > 0) || (invoices.length > 0) || (agreements.length > 0)) && (
+            <div className="bg-surface-white border border-border rounded-xl p-5 shadow-sm space-y-3.5">
+              <h3 className="text-xs md:text-sm font-bold text-text-primary flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <IconFileText className="h-4.5 w-4.5 text-violet-600" />
+                  <span>Generated Proposals, Invoices &amp; Contracts</span>
+                </div>
+                <span className="text-[10px] font-extrabold text-violet-700 bg-violet-50 dark:bg-violet-950/30 px-2 py-0.5 rounded-full border border-violet-200/60">
+                  {proposals.length + invoices.length + agreements.length} Generated PDFs
+                </span>
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {proposals.map((p) => (
+                  <div key={p.id} className="p-3 rounded-xl border border-border/80 bg-surface-page/50 flex items-center justify-between gap-3 hover:border-violet-300 transition-all">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold text-xs text-text-primary truncate">{p.title}</span>
+                        <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-700">{p.status}</span>
+                      </div>
+                      <span className="text-[10px] text-text-secondary block mt-0.5">{p.number} {p.amount ? `· ₹${p.amount.toLocaleString("en-IN")}` : ""}</span>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {p.pdfKey && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => setPreviewModal({ open: true, title: `Proposal: ${p.title}`, pdfKey: p.pdfKey })}
+                            className="p-1.5 rounded-lg border border-border/80 bg-surface-white hover:bg-violet-50 text-violet-600 transition text-[11px] font-semibold flex items-center gap-1 cursor-pointer"
+                            title="View Proposal PDF"
+                          >
+                            <IconEye className="h-3.5 w-3.5" /> <span className="hidden sm:inline">View</span>
+                          </button>
+                          <a
+                            href={getFileUrl(p.pdfKey)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            download
+                            className="p-1.5 rounded-lg border border-border/80 bg-surface-white hover:bg-violet-50 text-violet-600 transition text-[11px] font-semibold flex items-center gap-1"
+                            title="Download PDF"
+                          >
+                            <IconDownload className="h-3.5 w-3.5" />
+                          </a>
+                        </>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteGenItem(p.id, "proposal")}
+                        className="p-1.5 rounded-lg border border-border/80 bg-surface-white hover:bg-rose-50 text-rose-600 transition text-[11px] font-semibold cursor-pointer"
+                        title="Delete Proposal"
+                      >
+                        <IconTrash className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+
+                {invoices.map((inv) => (
+                  <div key={inv.id} className="p-3 rounded-xl border border-border/80 bg-surface-page/50 flex items-center justify-between gap-3 hover:border-blue-300 transition-all">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold text-xs text-text-primary truncate">Invoice {inv.number}</span>
+                        <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700">{inv.status}</span>
+                      </div>
+                      <span className="text-[10px] text-text-secondary block mt-0.5">Total: ₹{inv.total.toLocaleString("en-IN")}</span>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {inv.pdfKey && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => setPreviewModal({ open: true, title: `Invoice: ${inv.number}`, pdfKey: inv.pdfKey })}
+                            className="p-1.5 rounded-lg border border-border/80 bg-surface-white hover:bg-blue-50 text-blue-600 transition text-[11px] font-semibold flex items-center gap-1 cursor-pointer"
+                            title="View Invoice PDF"
+                          >
+                            <IconEye className="h-3.5 w-3.5" /> <span className="hidden sm:inline">View</span>
+                          </button>
+                          <a
+                            href={getFileUrl(inv.pdfKey)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            download
+                            className="p-1.5 rounded-lg border border-border/80 bg-surface-white hover:bg-blue-50 text-blue-600 transition text-[11px] font-semibold flex items-center gap-1"
+                            title="Download PDF"
+                          >
+                            <IconDownload className="h-3.5 w-3.5" />
+                          </a>
+                        </>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteGenItem(inv.id, "invoice")}
+                        className="p-1.5 rounded-lg border border-border/80 bg-surface-white hover:bg-rose-50 text-rose-600 transition text-[11px] font-semibold cursor-pointer"
+                        title="Delete Invoice"
+                      >
+                        <IconTrash className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+
+                {agreements.map((a) => (
+                  <div key={a.id} className="p-3 rounded-xl border border-border/80 bg-surface-page/50 flex items-center justify-between gap-3 hover:border-emerald-300 transition-all">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold text-xs text-text-primary truncate">{a.title}</span>
+                        <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">{a.status}</span>
+                      </div>
+                      <span className="text-[10px] text-text-secondary block mt-0.5">{a.number}</span>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {a.pdfKey && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => setPreviewModal({ open: true, title: a.title, pdfKey: a.pdfKey })}
+                            className="p-1.5 rounded-lg border border-border/80 bg-surface-white hover:bg-emerald-50 text-emerald-600 transition text-[11px] font-semibold flex items-center gap-1 cursor-pointer"
+                            title="View Agreement PDF"
+                          >
+                            <IconEye className="h-3.5 w-3.5" /> <span className="hidden sm:inline">View</span>
+                          </button>
+                          <a
+                            href={getFileUrl(a.pdfKey)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            download
+                            className="p-1.5 rounded-lg border border-border/80 bg-surface-white hover:bg-emerald-50 text-emerald-600 transition text-[11px] font-semibold flex items-center gap-1"
+                            title="Download PDF"
+                          >
+                            <IconDownload className="h-3.5 w-3.5" />
+                          </a>
+                        </>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteGenItem(a.id, "agreement")}
+                        className="p-1.5 rounded-lg border border-border/80 bg-surface-white hover:bg-rose-50 text-rose-600 transition text-[11px] font-semibold cursor-pointer"
+                        title="Delete Agreement"
+                      >
+                        <IconTrash className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="bg-surface-white border border-border rounded-xl p-6 shadow-sm space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div className="relative w-full sm:w-72">
@@ -1159,7 +1424,57 @@ export function ClientDetailClient({ client }: ClientDetailClientProps) {
           </div>
         </div>
       )}
+
+      {/* ─── PDF PREVIEW MODAL ─── */}
+      <PdfPreviewModal
+        open={previewModal.open}
+        onClose={() => setPreviewModal({ open: false, title: "", pdfKey: null })}
+        title={previewModal.title}
+        pdfKey={previewModal.pdfKey}
+      />
     </div>
+  );
+}
+
+function PdfPreviewModal({ open, onClose, title, pdfKey }: { open: boolean; onClose: () => void; title: string; pdfKey: string | null }) {
+  const url = getFileUrl(pdfKey);
+  return (
+    <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
+      <SheetContent side="right" className="w-full sm:max-w-4xl p-0 flex flex-col h-full bg-surface-white">
+        <div className="px-6 py-4 border-b border-border-custom flex items-center justify-between bg-surface-page/50">
+          <div>
+            <h3 className="font-bold text-sm text-foreground truncate">{title}</h3>
+            <p className="text-[11px] text-text-secondary">Official PDF Document Preview</p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0 pr-8">
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-surface-white border border-border-custom hover:bg-surface-page transition text-foreground"
+            >
+              <IconEye className="h-3.5 w-3.5 text-violet-600" /> Full Page
+            </a>
+            <a
+              href={url}
+              download
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-brand-orange text-white hover:bg-brand-orange-hover transition shadow-xs"
+            >
+              <IconDownload className="h-3.5 w-3.5" /> Download
+            </a>
+          </div>
+        </div>
+        <div className="flex-1 bg-stone-100 dark:bg-stone-900">
+          {pdfKey ? (
+            <iframe src={url} className="w-full h-full border-0" title={title} />
+          ) : (
+            <div className="flex items-center justify-center h-full text-xs text-text-secondary">
+              No PDF file available to preview
+            </div>
+          )}
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 

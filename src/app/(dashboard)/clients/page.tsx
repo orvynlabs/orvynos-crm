@@ -8,8 +8,36 @@ const getCachedClientsPageData = unstable_cache(
     const [clientsRaw, projectsRaw] = await Promise.all([
       withRetry(() =>
         prisma.client.findMany({
-          include: {
+          select: {
+            id: true,
+            name: true,
+            logo: true,
+            contactName: true,
+            email: true,
+            phone: true,
+            secondaryPhone: true,
+            website: true,
+            address: true,
+            city: true,
+            state: true,
+            gstin: true,
+            createdAt: true,
+            updatedAt: true,
             projects: {
+              select: {
+                id: true,
+                name: true,
+                description: true,
+                status: true,
+                budget: true,
+                progress: true,
+                techStack: true,
+                startDate: true,
+                deadline: true,
+                completedAt: true,
+                createdAt: true,
+                updatedAt: true,
+              },
               orderBy: {
                 createdAt: "desc",
               },

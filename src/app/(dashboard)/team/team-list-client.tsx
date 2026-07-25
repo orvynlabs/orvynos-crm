@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
+import { useState, useTransition, useEffect, useDeferredValue, useMemo } from "react";
 import Link from "next/link";
 import {
   IconUsers,
@@ -22,6 +22,8 @@ import {
 } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { updateTeamMemberStatus, createDailyUpdate, deleteDailyUpdate } from "./actions";
+import { toast } from "@/components/ui/toast-provider";
+import { confirmModal } from "@/components/ui/confirm-provider";
 import {
   Sheet,
   SheetContent,
@@ -86,6 +88,7 @@ export type DailyUpdateItem = {
 type TeamListClientProps = {
   members: EnrichedTeamMember[];
   initialDailyUpdates: DailyUpdateItem[];
+  currentUser?: { name?: string | null; email?: string | null; image?: string | null; id?: string } | null;
 };
 
 const STATUS_CONFIG: Record<
@@ -132,24 +135,59 @@ const getInitials = (name: string) => {
   return name.slice(0, 2).toUpperCase();
 };
 
+const QUICK_WORKING_CHIPS = [
+  "🚀 Feature Building",
+  "🎨 UI/UX Redesign",
+  "⚡ API Integration",
+  "🐞 Bug Fixing",
+  "📞 Client Demo",
+  "📝 Documentation",
+];
+
+const QUICK_COMPLETED_CHIPS = [
+  "✅ Production Deployed",
+  "✅ Milestone Delivered",
+  "✅ Proposal Approved",
+  "✅ Code Reviewed",
+  "✅ Payment Received",
+];
+
 export function TeamListClient({
   members: initialMembers,
   initialDailyUpdates,
+  currentUser,
 }: TeamListClientProps) {
   const [members, setMembers] = useState<EnrichedTeamMember[]>(initialMembers);
   const [dailyUpdates, setDailyUpdates] = useState<DailyUpdateItem[]>(initialDailyUpdates);
   const [searchQuery, setSearchQuery] = useState("");
+  const deferredSearchQuery = useDeferredValue(searchQuery);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [showFounderSelect, setShowFounderSelect] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [errorMsg, setErrorMsg] = useState("");
 
-  // Daily Standup Form State
+  // Automatically find the logged in team member profile
+  const loggedInMember = initialMembers.find(
+    (m) =>
+      (currentUser?.email && m.email.toLowerCase() === currentUser.email.toLowerCase()) ||
+      (currentUser?.name && m.name.toLowerCase().includes(currentUser.name.toLowerCase().split(" ")[0])) ||
+      (currentUser?.id && (m.userId === currentUser.id || m.id === currentUser.id))
+  ) || initialMembers[0];
+
+  // Daily Standup Form State (defaulted to logged in user)
   const [selectedMemberId, setSelectedMemberId] = useState<string>(
-    initialMembers[0]?.id || ""
+    loggedInMember?.id || initialMembers[0]?.id || ""
   );
   const [completedToday, setCompletedToday] = useState("");
   const [workingOnNext, setWorkingOnNext] = useState("");
   const [blockers, setBlockers] = useState("");
+
+  // Auto-set selected member to logged-in user on mount
+  useEffect(() => {
+    if (loggedInMember?.id) {
+      setSelectedMemberId(loggedInMember.id);
+    }
+  }, [loggedInMember]);
 
   // Listen to the custom window event to open the Standup Sheet instantly
   useEffect(() => {
@@ -162,10 +200,16 @@ export function TeamListClient({
 
   useEffect(() => {
     setMembers(initialMembers);
-    if (!selectedMemberId && initialMembers.length > 0) {
-      setSelectedMemberId(initialMembers[0].id);
+  }, [initialMembers]);
+
+  // Helper to append quick chip text
+  const appendChipText = (setter: React.Dispatch<React.SetStateAction<string>>, current: string, chipText: string) => {
+    if (!current) {
+      setter(chipText);
+    } else if (!current.includes(chipText)) {
+      setter(`${current}, ${chipText}`);
     }
-  }, [initialMembers, selectedMemberId]);
+  };
 
   // Handle Status Update for a Co-Founder
   const handleStatusChange = (
@@ -186,72 +230,101 @@ export function TeamListClient({
     });
   };
 
-  // Handle Daily Standup Form Submission
+  // Handle Daily Standup Form Submission (Optimistic 0ms Update)
   const handleStandupSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!completedToday.trim() || !workingOnNext.trim()) return;
 
     setErrorMsg("");
+
+    const member =
+      members.find((m) => m.id === selectedMemberId || m.userId === selectedMemberId) ||
+      members[0];
+
+    const tempId = `temp-${Date.now()}`;
+    const optimisticUpdate: DailyUpdateItem = {
+      id: tempId,
+      teamMemberId: selectedMemberId,
+      memberName: member?.name || "Co-Founder",
+      memberTitle: member?.title || null,
+      memberImage: member?.image || null,
+      completedToday,
+      workingOnNext,
+      blockers: blockers.trim() || null,
+      createdAt: new Date().toISOString(),
+    };
+
+    // ⚡ 1. Instantly update UI optimistically
+    setDailyUpdates((prev) => [optimisticUpdate, ...prev]);
+    toast.success("Standup Logged!", `Daily morning update successfully posted for ${member?.name}.`);
+    window.dispatchEvent(new Event("refresh-team-status"));
+
+    // Capture values before clearing form
+    const currentCompleted = completedToday;
+    const currentWorking = workingOnNext;
+    const currentBlockers = blockers;
+
+    setCompletedToday("");
+    setWorkingOnNext("");
+    setBlockers("");
+    setIsSheetOpen(false);
+
+    // ⚡ 2. Persist in background
     startTransition(async () => {
       const res = await createDailyUpdate({
         teamMemberId: selectedMemberId,
-        completedToday,
-        workingOnNext,
-        blockers: blockers.trim() || undefined,
+        completedToday: currentCompleted,
+        workingOnNext: currentWorking,
+        blockers: currentBlockers.trim() || undefined,
       });
 
       if (res.success && res.data) {
-        const member =
-          members.find((m) => m.id === selectedMemberId || m.userId === selectedMemberId) ||
-          members[0];
-
-        const newUpdate: DailyUpdateItem = {
-          id: res.data.id,
-          teamMemberId: selectedMemberId,
-          memberName: member?.name || "Co-Founder",
-          memberTitle: member?.title || null,
-          memberImage: member?.image || null,
-          completedToday,
-          workingOnNext,
-          blockers: blockers.trim() || null,
-          createdAt: new Date().toISOString(),
-        };
-
-        setDailyUpdates((prev) => [newUpdate, ...prev]);
-        window.dispatchEvent(new Event("refresh-team-status"));
-        setCompletedToday("");
-        setWorkingOnNext("");
-        setBlockers("");
-        setIsSheetOpen(false);
+        // Swap temp ID with real DB ID
+        setDailyUpdates((prev) =>
+          prev.map((item) => (item.id === tempId ? { ...item, id: res.data.id } : item))
+        );
       } else {
+        // Revert optimistic update on failure
+        setDailyUpdates((prev) => prev.filter((item) => item.id !== tempId));
+        toast.error("Failed to save", res.error || "Could not save daily update.");
         setErrorMsg(res.error || "Failed to post daily update.");
       }
     });
   };
 
-  const handleDeleteUpdate = (id: string) => {
-    if (!confirm("Are you sure you want to delete this standup update?")) return;
+  const handleDeleteUpdate = async (id: string) => {
+    const ok = await confirmModal({
+      title: "Delete Standup Update?",
+      description: "Are you sure you want to delete this daily update entry? This action cannot be undone.",
+      confirmText: "Delete Entry",
+      variant: "danger",
+    });
+    if (!ok) return;
 
     setDailyUpdates((prev) => prev.filter((u) => u.id !== id));
+    toast.warning("Update Deleted", "Daily standup entry removed.");
     window.dispatchEvent(new Event("refresh-team-status"));
 
     startTransition(async () => {
       const res = await deleteDailyUpdate(id);
       if (!res.success) {
-        alert(res.error || "Failed to delete daily update.");
+        toast.error("Delete Failed", res.error || "Failed to delete daily update.");
       }
     });
   };
 
-  const filteredMembers = members.filter((m) => {
-    const q = searchQuery.toLowerCase();
-    return (
-      m.name.toLowerCase().includes(q) ||
-      m.email.toLowerCase().includes(q) ||
-      (m.title && m.title.toLowerCase().includes(q)) ||
-      m.skills.some((s) => s.toLowerCase().includes(q))
-    );
-  });
+  const filteredMembers = useMemo(() => {
+    const q = deferredSearchQuery.toLowerCase();
+    if (!q) return members;
+    return members.filter((m) => {
+      return (
+        m.name.toLowerCase().includes(q) ||
+        m.email.toLowerCase().includes(q) ||
+        (m.title && m.title.toLowerCase().includes(q)) ||
+        m.skills.some((s) => s.toLowerCase().includes(q))
+      );
+    });
+  }, [members, deferredSearchQuery]);
 
   const totalMembers = members.length;
   const availableCount = members.filter((m) => (m.status || "AVAILABLE") === "AVAILABLE").length;
@@ -266,6 +339,9 @@ export function TeamListClient({
   }, {} as Record<string, DailyUpdateItem>);
 
   const displayedUpdates = Object.values(latestUpdatesByFounder);
+
+  // Selected posting member profile
+  const activePostingMember = members.find((m) => m.id === selectedMemberId) || loggedInMember || members[0];
 
   return (
     <div className="space-y-6 font-sans select-none">
@@ -290,21 +366,23 @@ export function TeamListClient({
         <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
           <SheetTrigger
             render={
-              <Button className="font-bold text-xs bg-brand-orange hover:bg-brand-orange-hover text-white py-2 px-4 rounded-xl flex items-center gap-1.5 shadow-xs border-0 h-9 cursor-pointer active:scale-[0.98] transition-all">
-                <IconPlus className="h-4 w-4" stroke={2.5} />
+              <Button className="font-bold text-xs bg-brand-orange hover:bg-brand-orange-hover text-white py-2 px-4 rounded-xl flex items-center gap-1.5 shadow-xs border-0 h-9 cursor-pointer active:scale-[0.98] transition-all shrink-0">
+                <IconPlus className="h-4 w-4 stroke-[2.5]" />
                 Post Daily Standup
               </Button>
             }
           />
-          <SheetContent className="w-full max-w-[440px] p-5 bg-surface-white border-l border-border h-full flex flex-col justify-between overflow-y-auto">
+          <SheetContent className="w-full max-w-full sm:max-w-[460px] p-4 sm:p-6 bg-surface-white border-l border-border h-full flex flex-col justify-between overflow-y-auto font-sans">
             <form onSubmit={handleStandupSubmit} className="space-y-5">
               <SheetHeader>
-                <SheetTitle className="text-base font-bold text-text-primary text-left flex items-center gap-2">
-                  <IconSparkles className="h-4 w-4 text-brand-orange" />
-                  Post Daily Standup Update
+                <SheetTitle className="text-base font-extrabold text-text-primary text-left flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-xl bg-brand-orange-tint text-brand-orange flex items-center justify-center border border-brand-orange/20 shrink-0">
+                    <IconSparkles className="h-4 w-4" />
+                  </div>
+                  <span>Post Morning Standup</span>
                 </SheetTitle>
                 <SheetDescription className="text-xs text-text-secondary mt-0.5 text-left font-medium">
-                  Share what you are working on today, completed yesterday, and any blockers.
+                  Log your daily focus, progress, and blockers for the team.
                 </SheetDescription>
               </SheetHeader>
 
@@ -315,54 +393,135 @@ export function TeamListClient({
                 </div>
               )}
 
-              {/* Founder Selector */}
+              {/* LOGGED IN USER AUTO-ISOLATION CARD */}
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-text-primary">
-                  Posting as Co-Founder
-                </label>
-                <select
-                  value={selectedMemberId}
-                  onChange={(e) => setSelectedMemberId(e.target.value)}
-                  className="w-full h-10 px-3 bg-surface-page border border-border/80 rounded-xl text-xs font-bold text-text-primary focus:outline-none focus:ring-1 focus:ring-brand-orange"
-                >
-                  {members.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name} ({m.title || "Co-Founder"})
-                    </option>
-                  ))}
-                </select>
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-extrabold uppercase tracking-wider text-text-secondary">
+                    Posting As Co-Founder
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowFounderSelect(!showFounderSelect)}
+                    className="text-[10px] font-bold text-brand-orange hover:underline cursor-pointer"
+                  >
+                    {showFounderSelect ? "Use Auto-Detected Profile" : "Switch Co-Founder ▾"}
+                  </button>
+                </div>
+
+                {!showFounderSelect ? (
+                  <div className="p-3 bg-gradient-to-r from-brand-orange-tint/70 via-surface-page to-surface-white border border-brand-orange/30 rounded-2xl flex items-center justify-between shadow-2xs">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="relative shrink-0">
+                        {activePostingMember.image ? (
+                          <img
+                            src={activePostingMember.image}
+                            alt={activePostingMember.name}
+                            className="w-10 h-10 rounded-full object-cover border border-brand-orange/40 shadow-xs"
+                          />
+                        ) : (
+                          <div className={`w-10 h-10 rounded-full bg-gradient-to-tr ${getAvatarGradient(activePostingMember.name)} flex items-center justify-center font-black text-xs text-white shadow-xs`}>
+                            {getInitials(activePostingMember.name)}
+                          </div>
+                        )}
+                        <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white dark:border-stone-900" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <h4 className="text-xs font-black text-text-primary truncate">
+                            {activePostingMember.name}
+                          </h4>
+                          <span className="text-[9px] font-extrabold uppercase tracking-wider text-brand-orange bg-brand-orange-tint px-1.5 py-0.5 rounded border border-brand-orange/20 shrink-0">
+                            Logged In
+                          </span>
+                        </div>
+                        <p className="text-[10px] font-bold text-text-secondary truncate">
+                          {activePostingMember.title || "Co-Founder / Owner"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-1 rounded-lg border border-emerald-200/60 dark:border-emerald-900/30 flex items-center gap-1 shrink-0">
+                      <IconCheck className="h-3 w-3" stroke={2.5} />
+                      <span className="hidden sm:inline">Owner Verified</span>
+                    </div>
+                  </div>
+                ) : (
+                  <select
+                    value={selectedMemberId}
+                    onChange={(e) => setSelectedMemberId(e.target.value)}
+                    className="w-full h-10 px-3 bg-surface-page border border-border/80 rounded-xl text-xs font-bold text-text-primary focus:outline-none focus:ring-1 focus:ring-brand-orange"
+                  >
+                    {members.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name} ({m.title || "Co-Founder"})
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               {/* 1. What I am working on today */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-text-primary flex items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-full bg-brand-orange animate-pulse" />
-                  What I am working on today *
-                </label>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-text-primary flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-brand-orange animate-pulse" />
+                    What I am working on today *
+                  </label>
+                </div>
                 <textarea
                   required
                   rows={3}
                   placeholder="e.g. Building client details page and optimizing database queries..."
                   value={workingOnNext}
                   onChange={(e) => setWorkingOnNext(e.target.value)}
-                  className="w-full p-3 bg-surface-page border border-border/80 rounded-xl text-xs font-medium text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-1 focus:ring-brand-orange"
+                  className="w-full p-3 bg-surface-page border border-border/80 rounded-xl text-xs font-medium text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-1 focus:ring-brand-orange leading-relaxed"
                 />
+
+                {/* Quick Suggestion Chips */}
+                <div className="flex flex-wrap gap-1.5 pt-0.5">
+                  {QUICK_WORKING_CHIPS.map((chip) => (
+                    <button
+                      type="button"
+                      key={chip}
+                      onClick={() => appendChipText(setWorkingOnNext, workingOnNext, chip)}
+                      className="text-[10px] font-extrabold px-2 py-0.5 rounded-lg bg-surface-page hover:bg-brand-orange-tint hover:text-brand-orange border border-border/70 hover:border-brand-orange/30 transition-all cursor-pointer select-none"
+                    >
+                      + {chip}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* 2. What I completed yesterday */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-text-primary flex items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                  What I completed yesterday *
-                </label>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-text-primary flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                    What I completed yesterday *
+                  </label>
+                </div>
                 <textarea
                   required
                   rows={3}
                   placeholder="e.g. Completed payment receipt generation & deployed stripe helper..."
                   value={completedToday}
                   onChange={(e) => setCompletedToday(e.target.value)}
-                  className="w-full p-3 bg-surface-page border border-border/80 rounded-xl text-xs font-medium text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-1 focus:ring-brand-orange"
+                  className="w-full p-3 bg-surface-page border border-border/80 rounded-xl text-xs font-medium text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-1 focus:ring-brand-orange leading-relaxed"
                 />
+
+                {/* Quick Suggestion Chips */}
+                <div className="flex flex-wrap gap-1.5 pt-0.5">
+                  {QUICK_COMPLETED_CHIPS.map((chip) => (
+                    <button
+                      type="button"
+                      key={chip}
+                      onClick={() => appendChipText(setCompletedToday, completedToday, chip)}
+                      className="text-[10px] font-extrabold px-2 py-0.5 rounded-lg bg-surface-page hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-600 dark:hover:text-emerald-400 border border-border/70 hover:border-emerald-300 transition-all cursor-pointer select-none"
+                    >
+                      + {chip}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* 3. Blockers */}
@@ -384,10 +543,10 @@ export function TeamListClient({
                 <Button
                   type="submit"
                   disabled={isPending}
-                  className="flex-1 bg-brand-orange hover:bg-brand-orange-hover text-white font-bold text-xs h-10 rounded-xl shadow-xs border-0 cursor-pointer"
+                  className="flex-1 bg-brand-orange hover:bg-brand-orange-hover text-white font-bold text-xs h-10 rounded-xl shadow-xs border-0 cursor-pointer active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
                 >
                   <IconSend className="h-4 w-4" />
-                  {isPending ? "Posting Update..." : "Post Update"}
+                  {isPending ? "Posting Update..." : "Post Standup Update"}
                 </Button>
                 <button
                   type="button"
@@ -615,14 +774,23 @@ export function TeamListClient({
 
         {/* Right Section: Sticky Daily Standup Sidebar Panel */}
         <div className="md:col-span-4 space-y-4 md:sticky md:top-20">
-          <div className="border-b border-border/80 pb-3 flex items-center justify-between">
-            <h2 className="text-sm font-black text-text-primary uppercase tracking-wider flex items-center gap-1.5">
-              <IconMessageCode className="h-4.5 w-4.5 text-brand-orange" />
-              <span>Co-Founders Standups</span>
-            </h2>
-            <span className="text-[9.5px] font-black uppercase text-brand-orange bg-brand-orange-tint px-2 py-0.5 rounded shadow-2xs">
-              Latest
-            </span>
+          <div className="border-b border-border/80 pb-3 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <IconMessageCode className="h-4.5 w-4.5 text-brand-orange shrink-0" />
+              <h2 className="text-sm font-black text-text-primary uppercase tracking-wider truncate">
+                Co-Founders Standups
+              </h2>
+            </div>
+            
+            {/* Direct Header Post Action Button */}
+            <button
+              type="button"
+              onClick={() => setIsSheetOpen(true)}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-brand-orange hover:bg-brand-orange-hover text-white text-[11px] font-bold shadow-2xs active:scale-95 transition-all cursor-pointer border-0 shrink-0"
+            >
+              <IconPlus className="h-3.5 w-3.5 stroke-[2.5]" />
+              <span>Post Update</span>
+            </button>
           </div>
 
           <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-1">
@@ -701,12 +869,32 @@ export function TeamListClient({
                 </div>
               ))
             ) : (
-              <div className="bg-surface-white border border-border/80 rounded-2xl p-6 text-center space-y-1.5">
-                <IconMessageCode className="h-6 w-6 text-brand-orange mx-auto opacity-75 animate-bounce" stroke={2} />
-                <h4 className="text-xs font-bold text-text-primary">No standups posted yet</h4>
-                <p className="text-[10.5px] text-text-secondary font-medium leading-normal">
-                  Log your daily standup morning status using the button above.
-                </p>
+              <div className="bg-gradient-to-br from-brand-orange-tint/40 via-surface-white to-orange-50/30 dark:from-brand-orange-tint/20 dark:via-surface-white dark:to-stone-900/80 border border-brand-orange/30 rounded-2xl p-6 text-center space-y-3.5 shadow-2xs">
+                <div className="relative inline-flex items-center justify-center">
+                  <div className="w-12 h-12 rounded-2xl bg-brand-orange-tint text-brand-orange flex items-center justify-center border border-brand-orange/30 shadow-2xs">
+                    <IconMessageCode className="h-6 w-6" stroke={2.2} />
+                  </div>
+                  <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-orange opacity-75" />
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-brand-orange" />
+                  </span>
+                </div>
+
+                <div className="space-y-1">
+                  <h4 className="text-sm font-extrabold text-text-primary">No standups posted yet</h4>
+                  <p className="text-[11px] text-text-secondary font-medium leading-relaxed max-w-[240px] mx-auto">
+                    Share your daily focus, completed tasks, and blockers with your co-founders.
+                  </p>
+                </div>
+
+                <Button
+                  type="button"
+                  onClick={() => setIsSheetOpen(true)}
+                  className="w-full bg-brand-orange hover:bg-brand-orange-hover text-white font-extrabold text-xs h-9 rounded-xl shadow-xs border-0 cursor-pointer transition-all active:scale-[0.98] flex items-center justify-center gap-1.5"
+                >
+                  <IconPlus className="h-4 w-4 stroke-[2.5]" />
+                  <span>Post Morning Standup</span>
+                </Button>
               </div>
             )}
           </div>

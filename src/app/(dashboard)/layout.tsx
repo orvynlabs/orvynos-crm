@@ -13,11 +13,14 @@ import { getSidebarTeamStatus } from "@/app/(dashboard)/team/actions";
 export default async function DashboardLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const session = await auth();
+  const [session, teamStatusRes] = await Promise.all([
+    auth(),
+    getSidebarTeamStatus().catch(() => ({ success: false, data: [] })),
+  ]);
+
   if (!session?.user) redirect("/login");
 
-  const teamStatusRes = await getSidebarTeamStatus();
-  const initialTeamStatus = teamStatusRes.success && teamStatusRes.data ? teamStatusRes.data : [];
+  const initialTeamStatus = teamStatusRes?.success && teamStatusRes?.data ? teamStatusRes.data : [];
 
   return (
     <NavProvider>

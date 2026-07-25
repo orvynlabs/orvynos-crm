@@ -24,6 +24,8 @@ import {
 } from "@tabler/icons-react";
 import { ExpenseCategory } from "@/lib/enums";
 
+import { toast } from "@/components/ui/toast-provider";
+
 export type ExpenseRow = {
   id: string;
   title: string;
@@ -129,9 +131,12 @@ export function ExpensesClient({
       const result = await createExpense(data);
       if (result.success) {
         setIsSheetOpen(false);
+        toast.success("Expense Logged", `${formatCurrency(data.amount)} logged under ${data.category}.`);
         router.refresh();
       } else {
-        setErrorMsg(result.error || "Failed to log expense.");
+        const err = result.error || "Failed to log expense.";
+        setErrorMsg(err);
+        toast.error("Log Failed", err);
       }
     });
   };

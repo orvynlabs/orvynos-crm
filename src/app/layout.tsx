@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
+import { ToastProvider } from "@/components/ui/toast-provider";
+import { ConfirmProvider } from "@/components/ui/confirm-provider";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   variable: "--font-sans",
@@ -47,6 +49,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
+        suppressHydrationWarning
         className={`${plusJakartaSans.variable} ${geistMono.variable} antialiased`}
       >
         <ThemeProvider
@@ -55,7 +58,11 @@ export default function RootLayout({
           enableSystem={false}
           disableTransitionOnChange
         >
-          {children}
+          <ConfirmProvider>
+            <ToastProvider>
+              {children}
+            </ToastProvider>
+          </ConfirmProvider>
         </ThemeProvider>
       </body>
     </html>

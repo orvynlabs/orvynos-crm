@@ -23,6 +23,8 @@ import {
 } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { createDocument, deleteDocument } from "./actions";
+import { toast } from "@/components/ui/toast-provider";
+import { confirmModal } from "@/components/ui/confirm-provider";
 import {
   Sheet,
   SheetContent,
@@ -251,6 +253,7 @@ export function DocumentsClient({
         };
 
         setDocuments((prev) => [newDoc, ...prev]);
+        toast.success("Document Vault Upload", `${fileName} saved & linked.`);
         setFileName("");
         setFileUrl("");
         setSelectedFile(null);
@@ -258,19 +261,28 @@ export function DocumentsClient({
         setClientId("");
         setIsSheetOpen(false);
       } else {
-        setErrorMsg(res.error || "Failed to upload file");
+        const err = res.error || "Failed to upload file";
+        setErrorMsg(err);
+        toast.error("Upload Failed", err);
       }
     });
   };
 
-  const handleDelete = (id: string) => {
-    if (!confirm("Are you sure you want to delete this document?")) return;
+  const handleDelete = async (id: string) => {
+    const ok = await confirmModal({
+      title: "Delete Document?",
+      description: "Are you sure you want to delete this file from cloud vault? This action cannot be undone.",
+      confirmText: "Delete File",
+      variant: "danger",
+    });
+    if (!ok) return;
 
     setDocuments((prev) => prev.filter((d) => d.id !== id));
+    toast.warning("Document Deleted", "File removed from cloud storage.");
     startTransition(async () => {
       const res = await deleteDocument(id);
       if (!res.success) {
-        alert(res.error || "Failed to delete file");
+        toast.error("Delete Failed", res.error);
       }
     });
   };

@@ -112,15 +112,15 @@ export default async function ReceiptPrintPage({ params }: PageProps) {
         __html: `
         :root {
           color-scheme: light;
-          --brand: #F1441E;
-          --brand-deep: #D63A15;
-          --brand-tint: #FEF1EC;
-          --brand-tint-2: #FBDDD1;
-          --ink: #2b2825;
-          --muted: #8e8880;
-          --soft: #5e5852;
-          --line: #f1ece7;
-          --bg-soft: #fbf9f7;
+          --brand: #360CAF;
+          --brand-deep: #2B0991;
+          --brand-tint: #F3EFFF;
+          --brand-tint-2: #DDD0FF;
+          --ink: #190659;
+          --muted: #7A6FA6;
+          --soft: #4A3C80;
+          --line: #EAE4FF;
+          --bg-soft: #F9F7FF;
           --green: #16A34A;
           --green-bg: #E8F8F0;
           --green-line: #BBF7D0;
@@ -128,7 +128,7 @@ export default async function ReceiptPrintPage({ params }: PageProps) {
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
           font-family: "Manrope", "Segoe UI", -apple-system, sans-serif;
-          background: #efeae6;
+          background: #f1eeea;
           color: var(--ink);
           padding: 20px 12px;
           -webkit-print-color-adjust: exact;
@@ -139,7 +139,7 @@ export default async function ReceiptPrintPage({ params }: PageProps) {
         .frame {
           max-width: 800px; margin: 0 auto; background: #fff;
           border: 1px solid var(--brand-tint-2); border-radius: 16px; padding: 6px;
-          box-shadow: 0 4px 20px rgba(214,58,21,.05);
+          box-shadow: 0 4px 24px rgba(54,12,175,.08);
         }
         .page { border: 1.5px solid var(--brand); border-radius: 11px; overflow: hidden; background: #fff; }
         .inner { padding: 28px 40px 24px; }
@@ -269,8 +269,8 @@ export default async function ReceiptPrintPage({ params }: PageProps) {
             <div className="header">
               <div>
                 <div className="logo-row">
-                  {/* Exact system logo brand lockup image */}
-                  <img src="/brand/logo.png" alt="Orvyn Labs" style={{ height: '40px', width: 'auto', display: 'block' }} />
+                  {/* High-res OrvynLabs document logo */}
+                  <img src="/brand/document-logo.png" alt="Orvyn Labs" style={{ height: '98px', width: 'auto', display: 'block', margin: '0 0 12px 0' }} />
                 </div>
                 <div className="company-meta">
                   Orvyn Labs Partnership<br />
@@ -366,28 +366,28 @@ export default async function ReceiptPrintPage({ params }: PageProps) {
                 This is a digitally verified receipt issued by <b>Orvyn Labs Partnership</b> on receipt of corresponding payment milestones.
               </div>
               <div className="seal-block">
-                <svg className="seal" width="132" height="132" viewBox="0 0 140 140" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Orvyn Labs official verified seal">
+                <svg className="seal" width="144" height="144" viewBox="0 0 140 140" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Orvyn Labs official verified seal">
                   <defs>
                     <path id="arcTop" d="M 22,70 A 48,48 0 0,1 118,70" />
                     <path id="arcBottom" d="M 118,70 A 48,48 0 0,1 22,70" />
                   </defs>
                   {/* rings */}
-                  <circle cx="70" cy="70" r="66" fill="none" stroke="#F1441E" strokeWidth="2" />
-                  <circle cx="70" cy="70" r="60" fill="none" stroke="#F1441E" strokeWidth="0.8" strokeDasharray="3 2" />
-                  <circle cx="70" cy="70" r="41" fill="none" stroke="#F1441E" strokeWidth="1" />
+                  <circle cx="70" cy="70" r="66" fill="none" stroke="#360CAF" strokeWidth="2" />
+                  <circle cx="70" cy="70" r="60" fill="none" stroke="#360CAF" strokeWidth="0.8" strokeDasharray="3 2" />
+                  <circle cx="70" cy="70" r="41" fill="none" stroke="#360CAF" strokeWidth="1" />
                   {/* top text: ORVYN LABS */}
-                  <text fill="#F1441E" fontFamily="Manrope, 'Segoe UI', sans-serif" fontSize="10" fontWeight="700" letterSpacing="2.5">
+                  <text fill="#360CAF" fontFamily="Manrope, 'Segoe UI', sans-serif" fontSize="10" fontWeight="700" letterSpacing="2.5">
                     <textPath href="#arcTop" startOffset="50%" textAnchor="middle">ORVYN LABS</textPath>
                   </text>
                   {/* bottom text: OFFICIAL VERIFIED */}
-                  <text fill="#F1441E" fontFamily="Manrope, 'Segoe UI', sans-serif" fontSize="8.5" fontWeight="600" letterSpacing="3">
+                  <text fill="#360CAF" fontFamily="Manrope, 'Segoe UI', sans-serif" fontSize="8.5" fontWeight="600" letterSpacing="3">
                     <textPath href="#arcBottom" startOffset="50%" textAnchor="middle">OFFICIAL • VERIFIED</textPath>
                   </text>
                   {/* side elements */}
-                  <circle cx="18" cy="70" r="2" fill="#F1441E" />
-                  <circle cx="122" cy="70" r="2" fill="#F1441E" />
-                  {/* center Orvyn Labs logo icon */}
-                  <image href="/brand/favicon-48.png" x="53" y="53" height="34" width="34" />
+                  <circle cx="18" cy="70" r="2" fill="#360CAF" />
+                  <circle cx="122" cy="70" r="2" fill="#360CAF" />
+                  {/* center Orvyn Labs document logo */}
+                  <image href="/brand/document-logo.png" x="32" y="44" width="76" height="52" preserveAspectRatio="xMidYMid meet" />
                 </svg>
                 <div className="seal-caption">Authorized by <b>Orvyn Labs Partnership</b></div>
               </div>

@@ -15,6 +15,11 @@ import {
   IconReceipt2,
   IconUsersGroup,
   IconFileText,
+  IconReceipt,
+  IconFileCheck,
+  IconFileCode,
+  IconSparkles,
+  IconAward,
   IconChartBar,
 } from "@tabler/icons-react";
 import { NAV_ITEMS } from "./nav-items";
@@ -29,13 +34,17 @@ import {
 } from "@/components/ui/sheet";
 
 const QUICK_ACTIONS = [
-  { label: "New Project", href: "/projects/new", icon: IconBriefcase, desc: "Set up client agreement & timeline" },
+  { label: "New Proposal", href: "/generators?tab=proposals&action=create", icon: IconFileText, desc: "Create PDF proposal with pricing" },
+  { label: "New Invoice", href: "/generators?tab=invoices&action=create", icon: IconReceipt, desc: "Issue tax invoice & line items" },
+  { label: "Master Agreement", href: "/generators?tab=agreements&type=master&action=create", icon: IconFileCheck, desc: "Master Services Agreement (MSA)" },
+  { label: "Statement of Work", href: "/generators?tab=agreements&type=sow&action=create", icon: IconFileCode, desc: "Engineering SOW & milestones" },
+  { label: "Completion PCC", href: "/generators?tab=agreements&type=completion&action=create", icon: IconAward, desc: "Project Completion & Handover" },
+  { label: "New Project", href: "/projects/new", icon: IconBriefcase, desc: "Set up project & timeline" },
   { label: "Add Client", href: "/clients", icon: IconUsers, desc: "Add company & contact details" },
-  { label: "Standup Update", href: "/team", icon: IconUsersGroup, desc: "Post daily standup & log blockers" },
   { label: "Record Payment", href: "/payments", icon: IconCreditCard, desc: "Log payment inflow receipt" },
-  { label: "Add Expense", href: "/expenses", icon: IconReceipt2, desc: "Record tools, hosting or team payout" },
+  { label: "Add Expense", href: "/expenses", icon: IconReceipt2, desc: "Record tools, hosting or payout" },
   { label: "New Lead", href: "/leads?new=true", icon: IconTargetArrow, desc: "Add potential project inquiry" },
-  { label: "Create Generator", href: "/generators", icon: IconFileText, desc: "Generate Proposal, Invoice or PDF" },
+  { label: "Standup Update", href: "/team", icon: IconUsersGroup, desc: "Post daily standup & log blockers" },
 ];
 
 export function BottomNav() {

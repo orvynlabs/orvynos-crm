@@ -1,7 +1,8 @@
 "use server";
 
+import { cache } from "react";
 import { prisma } from "@/lib/db";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, unstable_cache } from "next/cache";
 import { PaymentMethod, PaymentStatus } from "@/lib/enums";
 import { getTeamMemberTotalPaid, getTeamMemberPendingAmount } from "@/lib/finance";
 
@@ -25,24 +26,31 @@ export type TeamPaymentInput = {
 };
 
 // Ultra-fast dedicated query for sidebar live team status (< 2ms)
-export async function getSidebarTeamStatus() {
+export const getSidebarTeamStatus = cache(async function getSidebarTeamStatus() {
   try {
     const members = await prisma.teamMember.findMany({
       select: {
         id: true,
         title: true,
         status: true,
+        phone: true,
         user: {
           select: {
             name: true,
+            email: true,
             image: true,
           },
         },
         dailyUpdates: {
           take: 1,
-          orderBy: { date: "desc" },
+          orderBy: { createdAt: "desc" },
           select: {
+            id: true,
+            completedToday: true,
             workingOnNext: true,
+            blockers: true,
+            createdAt: true,
+            date: true,
           },
         },
       },
@@ -55,109 +63,130 @@ export async function getSidebarTeamStatus() {
       data: members.map((m) => ({
         id: m.id,
         name: m.user.name,
+        email: m.user.email,
         image: m.user.image,
         title: m.title,
+        phone: m.phone,
         status: m.status,
-        dailyUpdates: m.dailyUpdates,
+        dailyUpdates: m.dailyUpdates.map((u) => ({
+          ...u,
+          createdAt: u.createdAt ? u.createdAt.toISOString() : new Date().toISOString(),
+          date: u.date ? u.date.toISOString() : new Date().toISOString(),
+        })),
       })),
     };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
-}
+});
 
 export async function getTeamMembers() {
-  try {
-    const hasDailyUpdatesModel = Boolean((prisma as any).dailyUpdate);
+  return unstable_cache(
+    async () => {
+      try {
+        const hasDailyUpdatesModel = Boolean((prisma as any).dailyUpdate);
 
-    const members = await prisma.teamMember.findMany({
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            image: true,
-            role: true,
-          },
-        },
-        assignments: {
+        const members = await prisma.teamMember.findMany({
           include: {
-            project: {
+            user: {
               select: {
                 id: true,
                 name: true,
+                email: true,
+                image: true,
+                role: true,
+              },
+            },
+            assignments: {
+              include: {
+                project: {
+                  select: {
+                    id: true,
+                    name: true,
+                    status: true,
+                  },
+                },
+              },
+            },
+            payments: {
+              select: {
+                id: true,
+                amount: true,
                 status: true,
               },
             },
+            ...(hasDailyUpdatesModel && {
+              dailyUpdates: {
+                take: 5,
+                orderBy: {
+                  createdAt: "desc" as const,
+                },
+              },
+            }),
           },
-        },
-        payments: {
-          select: {
-            id: true,
-            amount: true,
-            status: true,
+          orderBy: {
+            createdAt: "desc",
           },
-        },
-        ...(hasDailyUpdatesModel && {
-          dailyUpdates: {
-            take: 5,
-            orderBy: {
-              createdAt: "desc" as const,
-            },
-          },
-        }),
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+        });
 
-    const enrichedMembers = await Promise.all(
-      members.map(async (m: any) => {
-        const totalPaid = await getTeamMemberTotalPaid(m.id);
-        const pendingAmount = await getTeamMemberPendingAmount(m.id);
+        const enrichedMembers = members.map((m: any) => {
+          const totalPaid = m.payments
+            ? m.payments
+                .filter((p: any) => p.status === "COMPLETED")
+                .reduce((sum: number, p: any) => sum + Number(p.amount), 0)
+            : 0;
 
-        return {
-          id: m.id,
-          userId: m.userId,
-          name: m.user.name,
-          email: m.user.email,
-          image: m.user.image,
-          role: m.user.role,
-          title: m.title,
-          skills: m.skills,
-          phone: m.phone,
-          bio: m.bio,
-          status: m.status || "AVAILABLE",
-          assignedProjectsCount: m.assignments.length,
-          assignments: m.assignments.map((a: any) => ({
-            id: a.id,
-            projectId: a.projectId,
-            projectName: a.project.name,
-            projectStatus: a.project.status,
-            roleOnProject: a.roleOnProject,
-          })),
-          dailyUpdates: m.dailyUpdates ? m.dailyUpdates.map((u: any) => ({
-            id: u.id,
-            completedToday: u.completedToday,
-            workingOnNext: u.workingOnNext,
-            blockers: u.blockers,
-            date: u.date.toISOString(),
-            createdAt: u.createdAt.toISOString(),
-          })) : [],
-          totalPaid,
-          pendingAmount,
-          createdAt: m.createdAt.toISOString(),
-        };
-      })
-    );
+          const pendingAmount = m.payments
+            ? m.payments
+                .filter((p: any) => p.status === "PENDING")
+                .reduce((sum: number, p: any) => sum + Number(p.amount), 0)
+            : 0;
 
-    return { success: true, data: enrichedMembers };
-  } catch (error: any) {
-    console.error("Failed to fetch team members:", error);
-    return { success: false, error: error?.message || "Failed to fetch team members", data: [] };
-  }
+          return {
+            id: m.id,
+            userId: m.userId,
+            name: m.user.name,
+            email: m.user.email,
+            image: m.user.image,
+            role: m.user.role,
+            title: m.title,
+            skills: m.skills,
+            phone: m.phone,
+            bio: m.bio,
+            status: m.status || "AVAILABLE",
+            assignedProjectsCount: m.assignments.length,
+            assignments: m.assignments.map((a: any) => ({
+              id: a.id,
+              projectId: a.projectId,
+              projectName: a.project.name,
+              projectStatus: a.project.status,
+              roleOnProject: a.roleOnProject,
+            })),
+            dailyUpdates: m.dailyUpdates
+              ? m.dailyUpdates.map((u: any) => ({
+                  id: u.id,
+                  completedToday: u.completedToday,
+                  workingOnNext: u.workingOnNext,
+                  blockers: u.blockers,
+                  createdAt: u.createdAt ? u.createdAt.toISOString() : new Date().toISOString(),
+                }))
+              : [],
+            totalPaid,
+            pendingAmount,
+            createdAt: m.createdAt ? m.createdAt.toISOString() : new Date().toISOString(),
+            updatedAt: m.updatedAt ? m.updatedAt.toISOString() : new Date().toISOString(),
+          };
+        });
+
+        return { success: true, data: enrichedMembers };
+      } catch (error: any) {
+        console.error("Failed to fetch team members:", error);
+        return { success: false, error: error?.message || "Failed to fetch team members", data: [] };
+      }
+    },
+    ["team-members-data-v1"],
+    { revalidate: 30, tags: ["team"] }
+  )();
 }
 
 export async function updateTeamMemberStatus(id: string, status: "AVAILABLE" | "BUSY" | "ON_LEAVE") {

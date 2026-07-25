@@ -13,10 +13,12 @@ if (connectionString && connectionString.startsWith('"') && connectionString.end
 if (!globalForPrisma.pool) {
   globalForPrisma.pool = new Pool({
     connectionString,
-    max: 5, // Optimized max connections for Neon Free Tier limit (20 connections max across app)
-    idleTimeoutMillis: 15000,
-    connectionTimeoutMillis: 5000,
+    max: 10,
+    idleTimeoutMillis: 10000, // Reduced from 30s to 10s for Vercel Serverless
+    connectionTimeoutMillis: 10000, // Reduced to 10s
+    maxUses: 7500, // Automatically close connections before they age out
     ssl: { rejectUnauthorized: false },
+    allowExitOnIdle: true, // Crucial for Vercel functions to exit cleanly
   });
 
   globalForPrisma.pool.on('error', (err) => {
@@ -35,26 +37,31 @@ export const pool = globalForPrisma.pool;
 /**
  * Executes a database operation with automatic retry logic if the connection is dropped or timing out.
  */
-export async function withRetry<T>(fn: () => Promise<T>, retries = 2): Promise<T> {
+export async function withRetry<T>(fn: () => Promise<T>, retries = 3): Promise<T> {
   let attempt = 0;
   while (attempt <= retries) {
     try {
       return await fn();
     } catch (err: any) {
       attempt++;
+      const msg = (err.message || '').toLowerCase();
       const isConnectionError =
-        err.message?.includes('timeout') ||
-        err.message?.includes('terminated') ||
-        err.message?.includes('Connection') ||
-        err.code === 'ECONNRESET';
+        msg.includes('timeout') ||
+        msg.includes('terminated') ||
+        msg.includes('connection') ||
+        msg.includes('closed') ||
+        msg.includes('socket') ||
+        err.code === 'ECONNRESET' ||
+        err.code === '57P01';
 
       if (!isConnectionError || attempt > retries) {
         throw err;
       }
 
       console.warn(`[Database Retry] Attempt ${attempt}/${retries} after transient connection error: ${err.message}`);
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 400 * attempt));
     }
   }
   return fn();
 }
+

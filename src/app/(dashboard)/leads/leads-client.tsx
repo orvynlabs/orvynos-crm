@@ -8,6 +8,8 @@ import {
   IconPlus,
   IconSearch,
   IconSparkles,
+  IconUserCheck,
+  IconUserPlus,
   IconUser,
   IconBuilding,
   IconMail,
@@ -36,6 +38,8 @@ import {
 } from "@/components/ui/sheet";
 import { LeadStage } from "@/lib/enums";
 import { createLead, updateLead, updateLeadStage, deleteLead, convertLeadToClient, updateLeadStageFast } from "./actions";
+import { toast } from "@/components/ui/toast-provider";
+import { confirmModal } from "@/components/ui/confirm-provider";
 
 export type LeadItem = {
   id: string;
@@ -205,8 +209,10 @@ export function LeadsClient({ initialLeads }: LeadsClientProps) {
             )
           );
           setIsSheetOpen(false);
+          toast.success("Lead Updated", `${formName} profile updated.`);
         } else {
           setErrorMsg(res.error || "Failed to update lead");
+          toast.error("Update Failed", res.error);
         }
       } else {
         // Create new lead
@@ -243,8 +249,10 @@ export function LeadsClient({ initialLeads }: LeadsClientProps) {
 
           setLeads((prev) => [newLeadItem, ...prev]);
           setIsSheetOpen(false);
+          toast.success("Lead Created", `${formName} added to deal pipeline.`);
         } else {
           setErrorMsg(res.error || "Failed to create lead");
+          toast.error("Create Failed", res.error);
         }
       }
     });
@@ -255,25 +263,33 @@ export function LeadsClient({ initialLeads }: LeadsClientProps) {
     setLeads((prev) =>
       prev.map((l) => (l.id === leadId ? { ...l, stage: newStage } : l))
     );
+    toast.info("Pipeline Stage Updated", `Lead moved to ${newStage.replace(/_/g, " ")}.`);
 
     updateLeadStageFast(leadId, newStage).then((res) => {
       if (!res.success) {
         // Revert on error
         setLeads(initialLeads);
-        alert(res.error || "Failed to update lead stage");
+        toast.error("Stage Update Failed", res.error || "Could not move lead stage");
       }
     });
   };
 
   // Delete lead
-  const handleDeleteLead = (id: string) => {
-    if (!confirm("Are you sure you want to delete this lead?")) return;
+  const handleDeleteLead = async (id: string) => {
+    const ok = await confirmModal({
+      title: "Delete Lead?",
+      description: "Are you sure you want to delete this lead? This action cannot be undone.",
+      confirmText: "Delete Lead",
+      variant: "danger",
+    });
+    if (!ok) return;
 
     setLeads((prev) => prev.filter((l) => l.id !== id));
+    toast.warning("Lead Deleted", "Lead removed from pipeline.");
     startTransition(async () => {
       const res = await deleteLead(id);
       if (!res.success) {
-        alert(res.error || "Failed to delete lead");
+        toast.error("Delete Failed", res.error);
         setLeads(initialLeads);
       }
     });
@@ -329,13 +345,14 @@ export function LeadsClient({ initialLeads }: LeadsClientProps) {
           )
         );
         setIsConvertOpen(false);
+        toast.success("Lead Converted! 🎉", `${convertName} is now an active Client.`);
         router.push(`/clients/${res.clientId}`);
       } else {
-        alert(res.error || "Failed to convert lead to client");
+        toast.error("Conversion Failed", res.error || "Failed to convert lead to client");
       }
     } catch (err) {
       console.error(err);
-      alert("Error converting lead to client");
+      toast.error("Conversion Error", "Failed to convert lead to client");
     } finally {
       setConvertingId(null);
     }
@@ -673,46 +690,50 @@ export function LeadsClient({ initialLeads }: LeadsClientProps) {
                           )}
                         </div>
 
-                        {/* 🏆 Section 7.3: Convert to Client Button (Won stage or converted badge) */}
-                        <div className="pt-2 border-t border-border/60">
+                        {/* 🏆 Section 7.3: Convert to Client & Stage Transfer */}
+                        <div className="pt-2 border-t border-border/60 space-y-2">
+                          {/* Stage Selector Bar */}
+                          <div className="flex items-center justify-between text-[10px] text-text-secondary font-medium">
+                            <span className="flex items-center gap-1 font-bold text-foreground">
+                              <span className="h-1.5 w-1.5 rounded-full bg-brand-orange animate-pulse" />
+                              Stage:
+                            </span>
+                            <select
+                              value={lead.stage}
+                              onChange={(e) => handleStageChange(lead.id, e.target.value as LeadStage)}
+                              className="h-7 px-2 bg-surface-page hover:bg-surface-white border border-border-custom rounded-lg text-[10.5px] font-extrabold text-foreground focus:outline-none focus:ring-1 focus:ring-brand-orange cursor-pointer transition-colors"
+                            >
+                              {KANBAN_COLUMNS.map((c) => (
+                                <option key={c.id} value={c.id}>
+                                  Move to {c.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* Full-width 1-Click Convert Button or Converted Badge */}
                           {lead.convertedClientId ? (
                             <button
                               onClick={() => router.push(`/clients/${lead.convertedClientId}`)}
-                              className="w-full h-8 rounded-xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-extrabold text-[10.5px] flex items-center justify-center gap-1.5 hover:bg-emerald-500/20 transition-all cursor-pointer shadow-3xs"
+                              className="w-full h-8.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-700 dark:text-emerald-400 font-extrabold text-xs flex items-center justify-center gap-1.5 transition-all duration-200 cursor-pointer active:scale-95 shadow-2xs whitespace-nowrap"
                             >
-                              <IconCircleCheck className="h-3.5 w-3.5 text-emerald-600" />
+                              <IconCircleCheck className="h-4 w-4 text-emerald-600" />
                               <span>Converted Client ➔</span>
                             </button>
                           ) : (
-                            <div className="flex items-center gap-1.5">
-                              {/* 1-Click Convert to Client Button */}
-                              <button
-                                onClick={() => triggerConvertLead(lead)}
-                                disabled={convertingId === lead.id}
-                                className="flex-1 h-8 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 text-white font-black text-[10.5px] flex items-center justify-center gap-1 transition-all duration-200 cursor-pointer hover:scale-[1.02] hover:-translate-y-0.5 active:scale-[0.98] shadow-sm hover:shadow-md disabled:opacity-50"
-                                title="Convert this lead into a client profile"
-                              >
-                                {convertingId === lead.id ? (
-                                  <IconRefresh className="h-3.5 w-3.5 animate-spin" />
-                                ) : (
-                                  <IconSparkles className="h-3.5 w-3.5 animate-pulse" />
-                                )}
-                                <span>Convert to Client</span>
-                              </button>
-
-                              {/* Stage Switch Dropdown for quick move */}
-                              <select
-                                value={lead.stage}
-                                onChange={(e) => handleStageChange(lead.id, e.target.value as LeadStage)}
-                                className="h-8 px-1.5 bg-surface-page border border-border/80 rounded-xl text-[10px] font-extrabold text-text-secondary focus:outline-none cursor-pointer"
-                              >
-                                {KANBAN_COLUMNS.map((c) => (
-                                  <option key={c.id} value={c.id}>
-                                    Move to {c.label}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
+                            <button
+                              onClick={() => triggerConvertLead(lead)}
+                              disabled={convertingId === lead.id}
+                              className="w-full h-8.5 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-700 hover:to-teal-700 text-white font-extrabold text-xs flex items-center justify-center gap-1.5 transition-all duration-200 cursor-pointer shadow-2xs hover:shadow-md hover:scale-[1.01] active:scale-95 disabled:opacity-50 touch-manipulation whitespace-nowrap group"
+                              title="Convert this lead into an active Client profile"
+                            >
+                              {convertingId === lead.id ? (
+                                <IconRefresh className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <IconUserCheck className="h-4 w-4 text-emerald-100 group-hover:scale-110 group-hover:rotate-6 transition-all duration-200" />
+                              )}
+                              <span>Convert to Client</span>
+                            </button>
                           )}
                         </div>
                       </div>
@@ -901,7 +922,7 @@ export function LeadsClient({ initialLeads }: LeadsClientProps) {
           <form onSubmit={submitConvertLead} className="space-y-4">
             <SheetHeader>
               <SheetTitle className="text-base font-black text-text-primary text-left flex items-center gap-2">
-                <IconSparkles className="h-5 w-5 text-emerald-600 animate-pulse" />
+                <IconUserPlus className="h-5 w-5 text-emerald-600" />
                 <span>Confirm Client Conversion</span>
               </SheetTitle>
               <SheetDescription className="text-xs text-text-secondary text-left font-medium">
@@ -1037,9 +1058,10 @@ export function LeadsClient({ initialLeads }: LeadsClientProps) {
               <Button
                 type="submit"
                 disabled={convertingId !== null}
-                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-10 rounded-xl border-0 cursor-pointer shadow-xs animate-pulse"
+                className="flex-1 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-800 text-white font-extrabold text-xs h-10 rounded-xl border-0 cursor-pointer shadow-xs active:scale-95 transition-all duration-200 flex items-center justify-center gap-2 group"
               >
-                {convertingId !== null ? "Converting Deal..." : "Finalize & Convert Partner 🏆"}
+                <IconUserCheck className="h-4 w-4 text-emerald-100 group-hover:scale-110 transition-transform duration-200" />
+                <span>{convertingId !== null ? "Converting Deal..." : "Finalize & Convert Client"}</span>
               </Button>
               <button
                 type="button"

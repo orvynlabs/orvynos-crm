@@ -16,7 +16,7 @@ export const runtime = 'nodejs';
 
 // Bump this number whenever the receipt template design changes.
 // It automatically invalidates every previously cached PDF (disk + R2).
-const TEMPLATE_VERSION = 2;
+const TEMPLATE_VERSION = 21;
 
 export async function GET(
   request: NextRequest,

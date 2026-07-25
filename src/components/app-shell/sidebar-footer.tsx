@@ -20,7 +20,24 @@ export function SidebarFooter({ user }: SidebarFooterProps) {
   const initials = getUserInitials(user.name);
 
   const handleSignOut = async () => {
+    if (isSigningOut) return;
     setIsSigningOut(true);
+
+    try {
+      const authCookies = [
+        "authjs.session-token",
+        "__Secure-authjs.session-token",
+        "next-auth.session-token",
+        "__Secure-next-auth.session-token",
+        "authjs.csrf-token",
+        "__Host-authjs.csrf-token",
+      ];
+      authCookies.forEach((name) => {
+        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname};`;
+      });
+    } catch {}
+
     try {
       await signOutAction();
     } catch {
