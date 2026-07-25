@@ -83,14 +83,15 @@ async function getBrowser() {
   const isVercelServerless = Boolean(
     process.env.VERCEL ||
     process.env.AWS_LAMBDA_FUNCTION_NAME ||
-    process.env.AWS_EXECUTION_ENV ||
-    process.env.NODE_ENV === 'production'
+    process.env.AWS_EXECUTION_ENV
   );
 
   if (isVercelServerless) {
     console.log('[PDF Generator] Launching Chromium via @sparticuz/chromium for Vercel Serverless...');
-    const chromium = (await import('@sparticuz/chromium')).default;
-    const playwright = await import('playwright-core');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const chromium = require('@sparticuz/chromium');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const playwright = require('playwright-core');
 
     const executablePath = await chromium.executablePath();
     browserInstance = await playwright.chromium.launch({
@@ -103,7 +104,8 @@ async function getBrowser() {
 
   // Local development environment fallback
   try {
-    const playwright = await import('playwright');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const playwright = require('playwright');
     const userHome = process.env.USERPROFILE || 'C:\\Users\\muham';
     const msPlaywrightDir = path.join(userHome, 'AppData', 'Local', 'ms-playwright');
     let customExecPath: string | undefined;
@@ -130,9 +132,11 @@ async function getBrowser() {
     });
     return browserInstance;
   } catch (err) {
-    console.error('[PDF Generator] Failed to launch local browser, falling back to @sparticuz/chromium...', err);
-    const chromium = (await import('@sparticuz/chromium')).default;
-    const playwright = await import('playwright-core');
+    console.error('[PDF Generator] Local browser launch error, trying sparticuz fallback...', err);
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const chromium = require('@sparticuz/chromium');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const playwright = require('playwright-core');
 
     const executablePath = await chromium.executablePath();
     browserInstance = await playwright.chromium.launch({

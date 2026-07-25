@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  serverExternalPackages: ["playwright", "playwright-core", "@sparticuz/chromium", "pg"],
   eslint: {
     ignoreDuringBuilds: true,
   },

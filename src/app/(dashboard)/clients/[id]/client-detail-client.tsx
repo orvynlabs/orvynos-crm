@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useMemo } from "react";
+import { useState, useEffect, useTransition, useMemo } from "react";
 import Link from "next/link";
 import {
   IconArrowLeft,
@@ -1437,45 +1437,15 @@ export function ClientDetailClient({ client }: ClientDetailClientProps) {
 }
 
 function PdfPreviewModal({ open, onClose, title, pdfKey }: { open: boolean; onClose: () => void; title: string; pdfKey: string | null }) {
-  const url = getFileUrl(pdfKey);
-  return (
-    <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent side="right" className="w-full sm:max-w-4xl p-0 flex flex-col h-full bg-surface-white">
-        <div className="px-6 py-4 border-b border-border-custom flex items-center justify-between bg-surface-page/50">
-          <div>
-            <h3 className="font-bold text-sm text-foreground truncate">{title}</h3>
-            <p className="text-[11px] text-text-secondary">Official PDF Document Preview</p>
-          </div>
-          <div className="flex items-center gap-2 shrink-0 pr-8">
-            <a
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-surface-white border border-border-custom hover:bg-surface-page transition text-foreground"
-            >
-              <IconEye className="h-3.5 w-3.5 text-violet-600" /> Full Page
-            </a>
-            <a
-              href={url}
-              download
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-brand-orange text-white hover:bg-brand-orange-hover transition shadow-xs"
-            >
-              <IconDownload className="h-3.5 w-3.5" /> Download
-            </a>
-          </div>
-        </div>
-        <div className="flex-1 bg-stone-100 dark:bg-stone-900">
-          {pdfKey ? (
-            <iframe src={url} className="w-full h-full border-0" title={title} />
-          ) : (
-            <div className="flex items-center justify-center h-full text-xs text-text-secondary">
-              No PDF file available to preview
-            </div>
-          )}
-        </div>
-      </SheetContent>
-    </Sheet>
-  );
+  useEffect(() => {
+    if (open && pdfKey) {
+      const url = getFileUrl(pdfKey);
+      window.open(url, "_blank");
+      onClose();
+    }
+  }, [open, pdfKey, onClose]);
+
+  return null;
 }
 
 const formatBytes = (bytes: number) => {

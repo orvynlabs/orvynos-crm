@@ -11,7 +11,8 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("Production Error Caught by Boundary:", error);
+    const errorMsg = error?.message || (typeof error === "object" ? JSON.stringify(error) : String(error));
+    console.error("Application Error Caught by Boundary:", errorMsg);
   }, [error]);
 
   return (

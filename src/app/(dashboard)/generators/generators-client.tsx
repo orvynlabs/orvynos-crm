@@ -274,7 +274,12 @@ export function GeneratorsClient({
     docId?: string,
     type?: "proposal" | "invoice" | "agreement"
   ) => {
-    setPreviewModal({ open: true, title, pdfKey, docId, type });
+    if (pdfKey) {
+      const url = getFileUrl(pdfKey);
+      window.open(url, "_blank");
+    } else {
+      setPreviewModal({ open: true, title, pdfKey, docId, type });
+    }
   };
 
   // URL search params effect for Quick Actions
@@ -1594,6 +1599,18 @@ function PdfPreviewModal({
     setCurrentKey(pdfKey);
   }, [pdfKey]);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && open) {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
   const handleRefresh = async () => {
     if (!docId || type !== "agreement") return;
     setIsRefreshing(true);
@@ -1612,61 +1629,98 @@ function PdfPreviewModal({
   const url = getFileUrl(currentKey);
 
   return (
-    <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent side="right" className="w-full sm:max-w-4xl p-0 flex flex-col h-full bg-surface-white">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border-custom bg-surface-page">
-          <div className="min-w-0 pr-2">
-            <h3 className="font-bold text-xs sm:text-sm text-foreground truncate">{title}</h3>
-            <p className="text-[10px] text-text-secondary">PDF Document Preview</p>
+    <div className="fixed inset-0 z-[100] flex flex-col bg-stone-950/95 backdrop-blur-2xl animate-in fade-in duration-200 select-none">
+      {/* ── Top Modern Glassmorphism Header Bar ── */}
+      <header className="h-16 px-4 sm:px-6 bg-stone-900/90 border-b border-white/10 flex items-center justify-between gap-4 shrink-0 shadow-lg">
+        {/* Left: Document Info */}
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-xl bg-brand-orange/20 border border-brand-orange/30 text-brand-orange flex items-center justify-center shrink-0 shadow-xs">
+            <IconFileText className="h-5 w-5" />
           </div>
-          <div className="flex items-center gap-2 shrink-0 pr-6 sm:pr-8">
-            {docId && type === "agreement" && (
-              <button
-                type="button"
-                onClick={handleRefresh}
-                disabled={isRefreshing}
-                className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white transition shadow-2xs cursor-pointer active:scale-95 disabled:opacity-50"
-              >
-                <IconSparkles className={`h-3.5 w-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
-                <span>{isRefreshing ? "Re-rendering..." : "Re-render Template"}</span>
-              </button>
-            )}
-            <a
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-lg bg-surface-white border border-border-custom hover:bg-surface-page transition text-foreground cursor-pointer"
-            >
-              <IconEye className="h-3.5 w-3.5 text-violet-600" />
-              <span className="hidden sm:inline">Open Full Page</span>
-            </a>
-            <a
-              href={url}
-              download
-              className="flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-lg bg-brand-orange text-white hover:bg-brand-orange-hover transition shadow-2xs cursor-pointer"
-            >
-              <IconDownload className="h-3.5 w-3.5" />
-              <span>Download</span>
-            </a>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h3 className="font-black text-sm sm:text-base text-white truncate tracking-tight">{title}</h3>
+              {type && (
+                <span className="hidden sm:inline-block text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-brand-orange-tint text-brand-orange border border-brand-orange/30">
+                  {type}
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] font-medium text-stone-400 truncate flex items-center gap-1.5 mt-0.5">
+              <span>Full Page Document View</span>
+              <span className="w-1 h-1 rounded-full bg-emerald-400" />
+              <span className="text-emerald-400 font-bold">100% Vector Rendered</span>
+            </p>
           </div>
         </div>
-        <div className="flex-1 bg-stone-100 dark:bg-stone-900 relative">
-          {currentKey ? (
+
+        {/* Right: Actions & Close Button */}
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          {docId && type === "agreement" && (
+            <button
+              type="button"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-amber-500/30 transition cursor-pointer active:scale-95 disabled:opacity-50"
+            >
+              <IconSparkles className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
+              <span className="hidden md:inline">{isRefreshing ? "Re-rendering..." : "Re-render Template"}</span>
+            </button>
+          )}
+
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/10 transition cursor-pointer active:scale-95"
+          >
+            <IconEye className="h-4 w-4 text-brand-orange" />
+            <span className="hidden sm:inline">Open Full Tab</span>
+          </a>
+
+          <a
+            href={url}
+            download
+            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-black rounded-xl bg-brand-orange text-white hover:bg-brand-orange-hover transition shadow-md cursor-pointer active:scale-95"
+          >
+            <IconDownload className="h-4 w-4" />
+            <span>Download PDF</span>
+          </a>
+
+          <div className="w-px h-6 bg-white/10 mx-1 hidden sm:block" />
+
+          {/* Close Button */}
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-9 h-9 rounded-xl bg-white/10 hover:bg-rose-500/20 text-stone-300 hover:text-rose-400 border border-white/10 flex items-center justify-center transition cursor-pointer active:scale-95"
+            title="Close Viewer (Esc)"
+          >
+            <IconX className="h-5 w-5" />
+          </button>
+        </div>
+      </header>
+
+      {/* ── Full Page Canvas Container ── */}
+      <main className="flex-1 bg-stone-900/60 p-2 sm:p-6 flex justify-center items-center overflow-hidden relative">
+        {currentKey ? (
+          <div className="w-full h-full max-w-5xl bg-white rounded-2xl shadow-2xl overflow-hidden border border-white/10 relative flex flex-col">
             <iframe
               key={currentKey}
-              src={url}
-              className="w-full h-full border-0"
+              src={`${url}#toolbar=1&view=FitH`}
+              className="w-full h-full border-0 bg-white"
               title={title}
             />
-          ) : (
-            <div className="flex flex-col items-center justify-center h-full text-xs text-text-secondary p-4 text-center">
-              <IconAlertCircle className="h-6 w-6 text-text-secondary/50 mb-1" />
-              <span>No PDF preview file key available</span>
-            </div>
-          )}
-        </div>
-      </SheetContent>
-    </Sheet>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center h-full text-stone-400 text-xs p-6 text-center bg-stone-900/40 rounded-2xl border border-white/10">
+            <IconAlertCircle className="h-10 w-10 text-brand-orange/60 mb-2 animate-pulse" />
+            <span className="font-bold text-sm text-stone-200">No Document Key Specified</span>
+            <p className="text-xs text-stone-400 mt-1">Please select a valid proposal, invoice, or agreement file.</p>
+          </div>
+        )}
+      </main>
+    </div>
   );
 }
 
