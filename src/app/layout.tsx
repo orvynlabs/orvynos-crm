@@ -4,6 +4,8 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ToastProvider } from "@/components/ui/toast-provider";
 import { ConfirmProvider } from "@/components/ui/confirm-provider";
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   variable: "--font-sans",
@@ -61,6 +63,8 @@ export default function RootLayout({
           <ConfirmProvider>
             <ToastProvider>
               {children}
+              <Analytics />
+              <SpeedInsights />
             </ToastProvider>
           </ConfirmProvider>
         </ThemeProvider>
