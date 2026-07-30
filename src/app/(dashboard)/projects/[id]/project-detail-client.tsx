@@ -46,7 +46,7 @@ import { PaymentForm } from "@/components/payments/payment-form";
 import { toast } from "@/components/ui/toast-provider";
 import { confirmModal } from "@/components/ui/confirm-provider";
 import { PaymentHistoryTable } from "@/components/payments/payment-history-table";
-import { createPayment } from "@/app/(dashboard)/payments/actions";
+import { createPayment, updatePayment, deletePayment } from "@/app/(dashboard)/payments/actions";
 import { DeliveryBadge } from "@/components/projects/delivery-badge";
 import { createDocument, deleteDocument } from "@/app/(dashboard)/documents/actions";
 import { deleteGeneratorItem } from "@/app/(dashboard)/generators/actions";
@@ -563,6 +563,8 @@ const getFileUrl = (key?: string | null) => {
   return `/api/files/${cleanPath}`;
 };
 
+  const [editingPayment, setEditingPayment] = useState<any>(null);
+
   const handlePaymentSubmit = async (values: any) => {
     setPaymentErrorMsg("");
     startPaymentTransition(async () => {
@@ -576,6 +578,46 @@ const getFileUrl = (key?: string | null) => {
         router.refresh();
       } else {
         setPaymentErrorMsg(res.error || "Failed to log payment.");
+      }
+    });
+  };
+
+  const handleEditPaymentSubmit = async (values: any) => {
+    if (!editingPayment) return;
+    setPaymentErrorMsg("");
+    startPaymentTransition(async () => {
+      const res = await updatePayment({
+        id: editingPayment.id,
+        ...values,
+        projectId: project.id,
+        clientId: project.client.id,
+      });
+      if (res.success) {
+        setEditingPayment(null);
+        toast.success("Payment Updated! ✏️", "Payment record has been updated.");
+        router.refresh();
+      } else {
+        setPaymentErrorMsg(res.error || "Failed to update payment.");
+      }
+    });
+  };
+
+  const handleDeletePayment = async (pmt: any) => {
+    const confirmed = await confirmModal({
+      title: "Delete Payment Record",
+      description: `Are you sure you want to delete the payment record of ₹${Number(pmt.amount).toLocaleString('en-IN')}?`,
+      confirmText: "Delete Payment",
+      variant: "danger",
+    });
+    if (!confirmed) return;
+
+    startPaymentTransition(async () => {
+      const res = await deletePayment(pmt.id);
+      if (res.success) {
+        toast.success("Payment Deleted 🗑️", "Payment record removed.");
+        router.refresh();
+      } else {
+        toast.error("Delete Failed", res.error || "Failed to delete payment.");
       }
     });
   };
@@ -1040,7 +1082,49 @@ const getFileUrl = (key?: string | null) => {
               }))}
               showClientColumn={false}
               showProjectColumn={false}
+              onEdit={(pmt) => {
+                setPaymentErrorMsg("");
+                setEditingPayment(pmt);
+              }}
+              onDelete={handleDeletePayment}
             />
+
+            {/* Edit Payment Sheet */}
+            <Sheet open={!!editingPayment} onOpenChange={(open) => !open && setEditingPayment(null)}>
+              <SheetContent className="w-full max-w-[450px] p-6 bg-surface-white border-l border-border h-full flex flex-col justify-between overflow-y-auto">
+                <div>
+                  <SheetHeader className="mb-6">
+                    <SheetTitle className="text-lg font-bold text-text-primary text-left">
+                      Edit Payment Record
+                    </SheetTitle>
+                    <SheetDescription className="text-xs text-text-secondary mt-1 text-left">
+                      Update details for receipt {editingPayment?.receiptNumber || editingPayment?.id}.
+                    </SheetDescription>
+                  </SheetHeader>
+                  {editingPayment && (
+                    <PaymentForm
+                      projects={[]}
+                      fixedProjectId={project.id}
+                      fixedClientId={project.client.id}
+                      initialData={{
+                        id: editingPayment.id,
+                        projectId: project.id,
+                        clientId: project.client.id,
+                        amount: Number(editingPayment.amount),
+                        method: editingPayment.method,
+                        reference: editingPayment.reference || "",
+                        paidAt: editingPayment.paidAt ? (typeof editingPayment.paidAt === 'string' ? editingPayment.paidAt : new Date(editingPayment.paidAt).toISOString()) : undefined,
+                        notes: editingPayment.notes || "",
+                      }}
+                      onSubmit={handleEditPaymentSubmit}
+                      isPending={isPaymentPending}
+                      errorMsg={paymentErrorMsg}
+                      onCancel={() => setEditingPayment(null)}
+                    />
+                  )}
+                </div>
+              </SheetContent>
+            </Sheet>
           </div>
         </div>
       )}

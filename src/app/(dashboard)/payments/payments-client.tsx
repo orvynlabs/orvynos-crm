@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { PaymentHistoryTable, PaymentRow } from "@/components/payments/payment-history-table";
 import { PaymentForm, ProjectSelectOption } from "@/components/payments/payment-form";
-import { createPayment } from "./actions";
+import { createPayment, updatePayment, deletePayment } from "./actions";
 import {
   Sheet,
   SheetContent,
@@ -42,6 +42,7 @@ export function PaymentsClient({
 }: PaymentsClientProps) {
   const router = useRouter();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [editingPayment, setEditingPayment] = useState<PaymentRow | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedMethod, setSelectedMethod] = useState<string>("ALL");
   const [isPending, startTransition] = useTransition();
@@ -67,6 +68,41 @@ export function PaymentsClient({
         const err = result.error || "Failed to log payment.";
         setErrorMsg(err);
         toast.error("Payment Failed", err);
+      }
+    });
+  };
+
+  const handleUpdatePayment = async (data: any) => {
+    if (!editingPayment) return;
+    setErrorMsg("");
+    startTransition(async () => {
+      const result = await updatePayment({
+        id: editingPayment.id,
+        ...data,
+      });
+      if (result.success) {
+        setEditingPayment(null);
+        toast.success("Payment Updated! ✏️", "Payment record has been saved.");
+        router.refresh();
+      } else {
+        const err = result.error || "Failed to update payment.";
+        setErrorMsg(err);
+        toast.error("Update Failed", err);
+      }
+    });
+  };
+
+  const handleDeletePayment = async (payment: PaymentRow) => {
+    if (!confirm(`Are you sure you want to delete payment record of ${formatCurrency(Number(payment.amount))}?`)) {
+      return;
+    }
+    startTransition(async () => {
+      const result = await deletePayment(payment.id);
+      if (result.success) {
+        toast.success("Payment Deleted 🗑️", "Payment record removed.");
+        router.refresh();
+      } else {
+        toast.error("Delete Failed", result.error || "Could not delete payment.");
       }
     });
   };
@@ -257,7 +293,51 @@ export function PaymentsClient({
         </div>
       </div>
 
-      <PaymentHistoryTable payments={filteredPayments} />
+      <PaymentHistoryTable
+        payments={filteredPayments}
+        onEdit={(payment) => {
+          setErrorMsg("");
+          setEditingPayment(payment);
+        }}
+        onDelete={handleDeletePayment}
+      />
+
+      {/* Edit Payment Sheet */}
+      <Sheet open={!!editingPayment} onOpenChange={(open) => !open && setEditingPayment(null)}>
+        <SheetContent className="w-full sm:max-w-[420px] p-5 bg-surface-white border-l border-border h-full flex flex-col justify-between overflow-y-auto">
+          <div>
+            <SheetHeader className="mb-4">
+              <SheetTitle className="text-base font-bold text-text-primary text-left">
+                Edit Payment Record
+              </SheetTitle>
+              <SheetDescription className="text-xs text-text-secondary mt-0.5 text-left">
+                Update details for receipt {editingPayment?.receiptNumber || editingPayment?.id}.
+              </SheetDescription>
+            </SheetHeader>
+            {editingPayment && (
+              <PaymentForm
+                projects={projects}
+                fixedProjectId={editingPayment.projectId || editingPayment.project?.id}
+                fixedClientId={editingPayment.clientId || editingPayment.client?.id}
+                initialData={{
+                  id: editingPayment.id,
+                  projectId: editingPayment.projectId || editingPayment.project?.id,
+                  clientId: editingPayment.clientId || editingPayment.client?.id,
+                  amount: Number(editingPayment.amount),
+                  method: editingPayment.method,
+                  reference: editingPayment.reference || "",
+                  paidAt: editingPayment.paidAt ? (typeof editingPayment.paidAt === 'string' ? editingPayment.paidAt : new Date(editingPayment.paidAt).toISOString()) : undefined,
+                  notes: editingPayment.notes || "",
+                }}
+                onSubmit={handleUpdatePayment}
+                isPending={isPending}
+                errorMsg={errorMsg}
+                onCancel={() => setEditingPayment(null)}
+              />
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

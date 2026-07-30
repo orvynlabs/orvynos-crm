@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { IconDownload, IconCheck, IconClock, IconAlertCircle, IconArrowDownLeft, IconLoader2 } from "@tabler/icons-react";
+import { IconDownload, IconCheck, IconClock, IconAlertCircle, IconArrowDownLeft, IconLoader2, IconPencil, IconTrash } from "@tabler/icons-react";
 import { PaymentMethod, PaymentStatus } from "@/lib/enums";
 
 export type PaymentRow = {
@@ -13,6 +13,8 @@ export type PaymentRow = {
   reference: string | null;
   receiptNumber: string | null;
   notes?: string | null;
+  clientId?: string;
+  projectId?: string;
   client?: {
     id: string;
     name: string;
@@ -27,12 +29,16 @@ type PaymentHistoryTableProps = {
   payments: PaymentRow[];
   showClientColumn?: boolean;
   showProjectColumn?: boolean;
+  onEdit?: (payment: PaymentRow) => void;
+  onDelete?: (payment: PaymentRow) => void;
 };
 
 export function PaymentHistoryTable({
   payments,
   showClientColumn = true,
   showProjectColumn = true,
+  onEdit,
+  onDelete,
 }: PaymentHistoryTableProps) {
   
   const formatCurrency = (amount: number | any) => {
@@ -107,6 +113,8 @@ export function PaymentHistoryTable({
                 showClientColumn={showClientColumn}
                 formatCurrency={formatCurrency}
                 formatDate={formatDate}
+                onEdit={onEdit}
+                onDelete={onDelete}
               />
             );
           })
@@ -124,12 +132,16 @@ function PaymentCard({
   showClientColumn,
   formatCurrency,
   formatDate,
+  onEdit,
+  onDelete,
 }: {
   payment: PaymentRow;
   isCompleted: boolean;
   showClientColumn: boolean;
   formatCurrency: (amount: number | any) => string;
   formatDate: (date: Date | string) => string;
+  onEdit?: (payment: PaymentRow) => void;
+  onDelete?: (payment: PaymentRow) => void;
 }) {
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState(false);
@@ -140,12 +152,7 @@ function PaymentCard({
     setDownloadError(false);
 
     try {
-      // Bypass Next.js App Router global <a> interceptors by using window.open
-      // Next.js intercepts same-origin <a> clicks and converts them to fetch() requests,
-      // which strips the filename and downloads as a UUID Blob.
-      // window.open forces the browser to natively handle the HTTP attachment headers.
       window.open(`/api/receipts/${p.id}/download`, '_blank', 'noopener,noreferrer');
-      
       setTimeout(() => {
         setDownloading(false);
       }, 4000);
@@ -236,32 +243,33 @@ function PaymentCard({
         )}
       </div>
 
-      {/* Action strip — only for completed payments */}
-      {isCompleted && (
-        <div className="flex border-t border-border no-print">
-          {/* View Receipt: Opens instantly in a new browser tab */}
+      {/* Action strip */}
+      <div className="flex border-t border-border no-print divide-x divide-border bg-stone-50/50">
+        {/* View Receipt */}
+        {isCompleted && (
           <a
             href={`/receipts/${p.id}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex-1 flex items-center justify-center gap-1.5 py-3 border-r border-border bg-stone-50/50 hover:bg-brand-orange-tint/70 text-stone-500 hover:text-brand-orange active:scale-[0.98] transition-all duration-150 text-xs md:text-sm font-semibold cursor-pointer min-h-[44px]"
+            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-stone-600 hover:text-brand-orange hover:bg-brand-orange-tint/50 active:scale-[0.98] transition-all duration-150 text-xs font-semibold cursor-pointer min-h-[40px]"
           >
-            {/* Using IconCheck/IconEye helper equivalent or direct SVG */}
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" fill="none" strokeLinecap="round" strokeLinejoin="round">
               <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
               <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
               <path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" />
             </svg>
-            View Receipt
+            View
           </a>
+        )}
 
-          {/* Download Receipt: triggers direct download with loader indicator */}
+        {/* Download Receipt */}
+        {isCompleted && (
           <button
             type="button"
             onClick={handleDownload}
             disabled={downloading}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-3 bg-stone-50/50 hover:bg-brand-orange-tint/70 active:scale-[0.98] transition-all duration-150 text-xs md:text-sm font-semibold cursor-pointer disabled:opacity-60 disabled:pointer-events-none min-h-[44px] ${
-              downloadError ? "text-red-600" : "text-stone-500 hover:text-brand-orange"
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 active:scale-[0.98] transition-all duration-150 text-xs font-semibold cursor-pointer disabled:opacity-60 disabled:pointer-events-none min-h-[40px] ${
+              downloadError ? "text-red-600" : "text-stone-600 hover:text-brand-orange hover:bg-brand-orange-tint/50"
             }`}
           >
             {downloading ? (
@@ -272,17 +280,41 @@ function PaymentCard({
             ) : downloadError ? (
               <>
                 <IconAlertCircle className="h-4 w-4" />
-                Failed — tap to retry
+                Retry
               </>
             ) : (
               <>
                 <IconDownload className="h-4 w-4" />
-                Download PDF
+                PDF
               </>
             )}
           </button>
-        </div>
-      )}
+        )}
+
+        {/* Edit Payment */}
+        {onEdit && (
+          <button
+            type="button"
+            onClick={() => onEdit(p)}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-stone-600 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/20 active:scale-[0.98] transition-all duration-150 text-xs font-semibold cursor-pointer min-h-[40px]"
+          >
+            <IconPencil className="h-4 w-4" />
+            Edit
+          </button>
+        )}
+
+        {/* Delete Payment */}
+        {onDelete && (
+          <button
+            type="button"
+            onClick={() => onDelete(p)}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-stone-600 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 active:scale-[0.98] transition-all duration-150 text-xs font-semibold cursor-pointer min-h-[40px]"
+          >
+            <IconTrash className="h-4 w-4" />
+            Delete
+          </button>
+        )}
+      </div>
     </div>
   );
 }

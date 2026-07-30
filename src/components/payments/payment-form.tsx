@@ -30,6 +30,7 @@ type PaymentFormProps = {
   projects: ProjectSelectOption[];
   fixedProjectId?: string;
   fixedClientId?: string;
+  initialData?: Partial<PaymentFormValues> & { id?: string; projectId?: string; clientId?: string; paidAt?: string | Date };
   isPending?: boolean;
   errorMsg?: string;
   onCancel: () => void;
@@ -40,12 +41,15 @@ export function PaymentForm({
   projects,
   fixedProjectId,
   fixedClientId,
+  initialData,
   isPending = false,
   errorMsg = "",
   onCancel,
 }: PaymentFormProps) {
   
-  const defaultDate = new Date().toISOString().split('T')[0];
+  const defaultDate = initialData?.paidAt
+    ? (typeof initialData.paidAt === 'string' ? initialData.paidAt.split('T')[0] : new Date(initialData.paidAt).toISOString().split('T')[0])
+    : new Date().toISOString().split('T')[0];
 
   const {
     register,
@@ -54,12 +58,12 @@ export function PaymentForm({
   } = useForm<PaymentFormValues>({
     resolver: zodResolver(paymentSchema),
     defaultValues: {
-      projectId: fixedProjectId || "",
-      amount: undefined as any,
-      method: PaymentMethod.BANK_TRANSFER,
-      reference: "",
+      projectId: initialData?.projectId || fixedProjectId || "",
+      amount: initialData?.amount ?? (undefined as any),
+      method: initialData?.method || PaymentMethod.BANK_TRANSFER,
+      reference: initialData?.reference || "",
       paidAt: defaultDate,
-      notes: "",
+      notes: initialData?.notes || "",
     },
   });
 
@@ -215,10 +219,10 @@ export function PaymentForm({
           {isPending ? (
             <>
               <IconLoader className="h-3.5 w-3.5 animate-spin" />
-              Recording...
+              {initialData ? "Saving..." : "Recording..."}
             </>
           ) : (
-            "Record Payment"
+            initialData ? "Save Changes" : "Record Payment"
           )}
         </Button>
       </div>
