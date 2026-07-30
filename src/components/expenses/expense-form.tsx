@@ -24,6 +24,10 @@ export type ExpenseFormValues = z.infer<typeof expenseSchema>;
 export type ProjectOption = {
   id: string;
   name: string;
+  client?: {
+    id: string;
+    name: string;
+  } | null;
 };
 
 type ExpenseFormProps = {
@@ -192,9 +196,16 @@ export function ExpenseForm({
       {/* Project Selector (Visible if Client Project Cost selected) */}
       {isProjectExpense && (
         <div className="space-y-1.5 p-2.5 bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200/60 dark:border-emerald-900/40 rounded-xl">
-          <label className="text-[10px] font-extrabold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider block">
-            Select Linked Client Project <span className="text-rose-500">*</span>
-          </label>
+          <div className="flex items-center justify-between gap-1">
+            <label className="text-[10px] font-extrabold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider block">
+              Select Linked Client Project <span className="text-rose-500">*</span>
+            </label>
+            {selectedProject?.client?.name && (
+              <span className="text-[9.5px] font-extrabold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/60 px-2 py-0.5 rounded-md border border-emerald-300 dark:border-emerald-800">
+                👤 Client: {selectedProject.client.name}
+              </span>
+            )}
+          </div>
           <select
             disabled={isPending}
             {...register("projectId")}
@@ -202,7 +213,7 @@ export function ExpenseForm({
           >
             {projects.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.name}
+                {p.name} {p.client?.name ? `(Client: ${p.client.name})` : ""}
               </option>
             ))}
           </select>
@@ -325,9 +336,16 @@ export function ExpenseForm({
             Classification Summary:
           </span>
           {isProjectExpense ? (
-            <span className="text-emerald-600 dark:text-emerald-400 font-bold block">
-              📁 Assigned directly as cost for <span className="underline">{selectedProject?.name || "Client Project"}</span>
-            </span>
+            <div className="space-y-0.5">
+              <span className="text-emerald-600 dark:text-emerald-400 font-bold block">
+                📁 Assigned directly as cost for <span className="underline">{selectedProject?.name || "Client Project"}</span>
+              </span>
+              {selectedProject?.client?.name && (
+                <span className="text-stone-600 dark:text-stone-300 font-semibold text-[10.5px] block">
+                  👤 Linked Client: <span className="font-bold text-text-primary">{selectedProject.client.name}</span>
+                </span>
+              )}
+            </div>
           ) : (
             <span className="text-blue-600 dark:text-blue-400 font-bold block">
               🏢 Logged as general agency company overhead

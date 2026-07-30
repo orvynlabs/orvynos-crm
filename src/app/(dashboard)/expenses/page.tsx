@@ -9,7 +9,15 @@ const getCachedExpensesPageData = unstable_cache(
       withRetry(() =>
         prisma.expense.findMany({
           include: {
-            project: { select: { id: true, name: true } },
+            project: {
+              select: {
+                id: true,
+                name: true,
+                client: {
+                  select: { id: true, name: true },
+                },
+              },
+            },
           },
           orderBy: {
             date: "desc",
@@ -21,6 +29,9 @@ const getCachedExpensesPageData = unstable_cache(
           select: {
             id: true,
             name: true,
+            client: {
+              select: { id: true, name: true },
+            },
           },
           orderBy: {
             name: "asc",
@@ -52,7 +63,7 @@ const getCachedExpensesPageData = unstable_cache(
       },
     };
   },
-  ["expenses-page-data-v2"],
+  ["expenses-page-data-v3"],
   { revalidate: 30, tags: ["expenses"] }
 );
 

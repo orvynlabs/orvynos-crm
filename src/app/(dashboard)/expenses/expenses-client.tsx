@@ -40,6 +40,10 @@ export type ExpenseRow = {
   project?: {
     id: string;
     name: string;
+    client?: {
+      id: string;
+      name: string;
+    } | null;
   } | null;
 };
 
@@ -510,10 +514,17 @@ export function ExpensesClient({
                 <div className="flex items-center justify-between pt-2 border-t border-border/50 text-xs text-text-secondary">
                   <span className="font-medium">
                     {e.project?.name ? (
-                      <span className="text-stone-800 dark:text-stone-200 font-semibold flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-brand-orange shrink-0" />
-                        <span className="truncate max-w-[140px]">{e.project.name}</span>
-                      </span>
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-stone-800 dark:text-stone-200 font-semibold flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-brand-orange shrink-0" />
+                          <span className="truncate max-w-[140px]">{e.project.name}</span>
+                        </span>
+                        {e.project.client?.name && (
+                          <span className="text-[10px] text-text-secondary font-medium pl-2.5 truncate max-w-[140px]">
+                            Client: {e.project.client.name}
+                          </span>
+                        )}
+                      </div>
                     ) : (
                       <span className="text-stone-400 italic font-normal">Company Expense</span>
                     )}
@@ -552,7 +563,7 @@ export function ExpensesClient({
               <th className="px-3.5 py-2.5 w-[110px]">Date</th>
               <th className="px-3.5 py-2.5">Title / Description</th>
               <th className="px-3.5 py-2.5 w-[160px]">Category</th>
-              <th className="px-3.5 py-2.5 w-[160px]">Linked Project</th>
+              <th className="px-3.5 py-2.5 w-[170px]">Linked Project &amp; Client</th>
               <th className="px-3.5 py-2.5">Notes</th>
               <th className="px-3.5 py-2.5 text-right w-[110px]">Amount</th>
               <th className="px-3.5 py-2.5 text-right w-[90px]">Actions</th>
@@ -589,10 +600,17 @@ export function ExpensesClient({
                     </td>
                     <td className="px-3.5 py-2.5 text-xs font-semibold text-text-secondary">
                       {e.project?.name ? (
-                        <span className="inline-flex items-center gap-1 text-stone-800 dark:text-stone-200 font-bold truncate max-w-[150px]">
-                          <span className="w-1.5 h-1.5 rounded-full bg-brand-orange shrink-0" />
-                          <span className="truncate">{e.project.name}</span>
-                        </span>
+                        <div className="space-y-0.5 min-w-0">
+                          <span className="inline-flex items-center gap-1 text-stone-800 dark:text-stone-200 font-bold truncate max-w-[160px] block">
+                            <span className="w-1.5 h-1.5 rounded-full bg-brand-orange shrink-0" />
+                            <span className="truncate">{e.project.name}</span>
+                          </span>
+                          {e.project.client?.name && (
+                            <span className="text-[10.5px] text-text-secondary font-medium block truncate max-w-[160px] pl-2.5">
+                              Client: <span className="font-bold text-text-primary">{e.project.client.name}</span>
+                            </span>
+                          )}
+                        </div>
                       ) : (
                         <span className="text-stone-400 dark:text-stone-500 font-normal italic text-[11px]">
                           Company Expense
