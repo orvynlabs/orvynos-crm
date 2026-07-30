@@ -19,10 +19,13 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet";
+import { getRevenueGoal, updateRevenueGoal } from "@/app/actions/goal";
+import { toast } from "@/components/ui/toast-provider";
 
 export function RevenueTargetWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Default values: 50K Goal, 29K Achieved
   const [targetGoal, setTargetGoal] = useState(50000);
@@ -33,36 +36,60 @@ export function RevenueTargetWidget() {
   const [editAchieved, setEditAchieved] = useState(29000);
 
   useEffect(() => {
+    // 1. Initial local state fallback
     try {
       const savedTarget = localStorage.getItem("orvynos_revenue_target");
       const savedAchieved = localStorage.getItem("orvynos_revenue_achieved");
-      if (savedTarget) {
-        const parsedT = Number(savedTarget);
-        if (!isNaN(parsedT) && parsedT > 0) {
-          setTargetGoal(parsedT);
-          setEditTarget(parsedT);
-        }
+      if (savedTarget && !isNaN(Number(savedTarget))) {
+        setTargetGoal(Number(savedTarget));
+        setEditTarget(Number(savedTarget));
       }
-      if (savedAchieved) {
-        const parsedA = Number(savedAchieved);
-        if (!isNaN(parsedA) && parsedA >= 0) {
-          setCurrentAchieved(parsedA);
-          setEditAchieved(parsedA);
-        }
+      if (savedAchieved && !isNaN(Number(savedAchieved))) {
+        setCurrentAchieved(Number(savedAchieved));
+        setEditAchieved(Number(savedAchieved));
       }
     } catch (e) {}
+
+    // 2. Fetch authoritative database settings for all users/devices
+    getRevenueGoal().then((res) => {
+      if (res && res.targetGoal) {
+        setTargetGoal(res.targetGoal);
+        setEditTarget(res.targetGoal);
+        setCurrentAchieved(res.achievedGoal);
+        setEditAchieved(res.achievedGoal);
+        try {
+          localStorage.setItem("orvynos_revenue_target", String(res.targetGoal));
+          localStorage.setItem("orvynos_revenue_achieved", String(res.achievedGoal));
+        } catch (e) {}
+      }
+    });
   }, []);
 
-  const handleSaveGoal = (e: React.FormEvent) => {
+  const handleSaveGoal = async (e: React.FormEvent) => {
     e.preventDefault();
     if (editTarget <= 0) return;
-    setTargetGoal(editTarget);
-    setCurrentAchieved(Math.max(0, editAchieved));
+    setIsSaving(true);
+
+    const cleanT = editTarget;
+    const cleanA = Math.max(0, editAchieved);
+
+    setTargetGoal(cleanT);
+    setCurrentAchieved(cleanA);
+
     try {
-      localStorage.setItem("orvynos_revenue_target", String(editTarget));
-      localStorage.setItem("orvynos_revenue_achieved", String(Math.max(0, editAchieved)));
+      localStorage.setItem("orvynos_revenue_target", String(cleanT));
+      localStorage.setItem("orvynos_revenue_achieved", String(cleanA));
     } catch (err) {}
-    setIsEditing(false);
+
+    const res = await updateRevenueGoal(cleanT, cleanA);
+    setIsSaving(false);
+
+    if (res.success) {
+      toast.success("Goal Target Updated", `Revenue goal updated to ${fmt(cleanT)} across all team dashboards.`);
+      setIsEditing(false);
+    } else {
+      toast.error("Update Warning", res.error || "Saved locally; database sync failed");
+    }
   };
 
   const handlePresetSelect = (target: number) => {
@@ -259,10 +286,11 @@ export function RevenueTargetWidget() {
 
                 <button
                   type="submit"
-                  className="w-full h-9 rounded-xl bg-brand-orange hover:bg-brand-orange-hover text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs active:scale-[0.98] transition-all cursor-pointer"
+                  disabled={isSaving}
+                  className="w-full h-9 rounded-xl bg-brand-orange hover:bg-brand-orange-hover text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
                 >
                   <IconDeviceFloppy className="h-4 w-4" />
-                  Save Target Changes
+                  {isSaving ? "Saving Goal to Database..." : "Save Target Changes"}
                 </button>
               </form>
             )}
