@@ -48,3 +48,92 @@ export async function createExpense(data: ExpenseInput) {
     return { success: false, error: error instanceof Error ? error.message : "Failed to create expense" };
   }
 }
+
+export type UpdateExpenseInput = {
+  id: string;
+  title?: string;
+  amount?: number;
+  category?: ExpenseCategory;
+  date?: string;
+  notes?: string;
+  projectId?: string | null;
+};
+
+export async function updateExpense(data: UpdateExpenseInput) {
+  try {
+    if (!data.id) throw new Error("Expense ID is required");
+    if (data.amount !== undefined && (isNaN(data.amount) || data.amount <= 0)) {
+      throw new Error("Amount must be greater than 0");
+    }
+
+    const existing = await prisma.expense.findUnique({
+      where: { id: data.id },
+      select: { projectId: true },
+    });
+
+    if (!existing) throw new Error("Expense record not found");
+
+    const expenseDate = data.date ? new Date(data.date) : undefined;
+    const targetProjectId = data.projectId !== undefined ? (data.projectId || null) : existing.projectId;
+
+    await withRetry(() =>
+      prisma.expense.update({
+        where: { id: data.id },
+        data: {
+          ...(data.title ? { title: data.title } : {}),
+          ...(data.category ? { category: data.category } : {}),
+          ...(data.amount !== undefined ? { amount: data.amount } : {}),
+          ...(expenseDate ? { date: expenseDate } : {}),
+          ...(data.notes !== undefined ? { notes: data.notes || null } : {}),
+          ...(data.projectId !== undefined ? { projectId: data.projectId || null } : {}),
+        },
+      })
+    );
+
+    revalidateTag("expenses");
+    revalidateTag("dashboard-metrics");
+    revalidatePath("/expenses");
+    if (targetProjectId) {
+      revalidatePath(`/projects/${targetProjectId}`);
+      revalidateTag(`project-${targetProjectId}`);
+    }
+    if (existing.projectId && existing.projectId !== targetProjectId) {
+      revalidatePath(`/projects/${existing.projectId}`);
+      revalidateTag(`project-${existing.projectId}`);
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("Failed to update expense:", error);
+    return { success: false, error: error instanceof Error ? error.message : "Failed to update expense" };
+  }
+}
+
+export async function deleteExpense(id: string) {
+  try {
+    if (!id) throw new Error("Expense ID is required");
+
+    const existing = await prisma.expense.findUnique({
+      where: { id },
+      select: { projectId: true },
+    });
+
+    if (!existing) throw new Error("Expense record not found");
+
+    await withRetry(() => prisma.expense.delete({ where: { id } }));
+
+    revalidateTag("expenses");
+    revalidateTag("dashboard-metrics");
+    revalidatePath("/expenses");
+    if (existing.projectId) {
+      revalidatePath(`/projects/${existing.projectId}`);
+      revalidateTag(`project-${existing.projectId}`);
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("Failed to delete expense:", error);
+    return { success: false, error: error instanceof Error ? error.message : "Failed to delete expense" };
+  }
+}
+

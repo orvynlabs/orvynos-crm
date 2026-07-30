@@ -41,7 +41,7 @@ type ExpenseFormProps = {
     title: string;
     amount: number;
     category: ExpenseCategory | string;
-    date: string;
+    date: string | Date;
     projectId?: string | null;
     notes?: string | null;
   };

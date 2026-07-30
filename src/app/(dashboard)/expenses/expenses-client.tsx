@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ExpenseForm, ProjectOption } from "@/components/expenses/expense-form";
-import { createExpense } from "./actions";
+import { createExpense, updateExpense, deleteExpense } from "./actions";
 import {
   Sheet,
   SheetContent,
@@ -21,6 +21,8 @@ import {
   IconBriefcase,
   IconBuildingStore,
   IconX,
+  IconPencil,
+  IconTrash,
 } from "@tabler/icons-react";
 import { ExpenseCategory } from "@/lib/enums";
 import { parseExpenseCategory, formatStandardExpenseCategory } from "@/lib/expenses";
@@ -135,6 +137,8 @@ export function ExpensesClient({
     )
   );
 
+  const [editingExpense, setEditingExpense] = useState<ExpenseRow | null>(null);
+
   const handleLogExpense = async (data: any) => {
     setErrorMsg("");
     startTransition(async () => {
@@ -147,6 +151,41 @@ export function ExpensesClient({
         const err = result.error || "Failed to log expense.";
         setErrorMsg(err);
         toast.error("Log Failed", err);
+      }
+    });
+  };
+
+  const handleUpdateExpense = async (data: any) => {
+    if (!editingExpense) return;
+    setErrorMsg("");
+    startTransition(async () => {
+      const result = await updateExpense({
+        id: editingExpense.id,
+        ...data,
+      });
+      if (result.success) {
+        setEditingExpense(null);
+        toast.success("Expense Updated ✏️", "Expense record has been updated.");
+        router.refresh();
+      } else {
+        const err = result.error || "Failed to update expense.";
+        setErrorMsg(err);
+        toast.error("Update Failed", err);
+      }
+    });
+  };
+
+  const handleDeleteExpense = async (expense: ExpenseRow) => {
+    if (!confirm(`Are you sure you want to delete expense "${expense.title}" (${formatCurrency(Number(expense.amount))})?`)) {
+      return;
+    }
+    startTransition(async () => {
+      const result = await deleteExpense(expense.id);
+      if (result.success) {
+        toast.success("Expense Deleted 🗑️", "Expense record removed.");
+        router.refresh();
+      } else {
+        toast.error("Delete Failed", result.error || "Could not delete expense.");
       }
     });
   };
@@ -473,17 +512,31 @@ export function ExpensesClient({
                     {e.project?.name ? (
                       <span className="text-stone-800 dark:text-stone-200 font-semibold flex items-center gap-1">
                         <span className="w-1.5 h-1.5 rounded-full bg-brand-orange shrink-0" />
-                        <span className="truncate max-w-[150px]">{e.project.name}</span>
+                        <span className="truncate max-w-[140px]">{e.project.name}</span>
                       </span>
                     ) : (
                       <span className="text-stone-400 italic font-normal">Company Expense</span>
                     )}
                   </span>
-                  {parsed.cleanNotes && (
-                    <span className="text-xs text-text-secondary truncate max-w-[140px] font-normal italic">
-                      {parsed.cleanNotes}
-                    </span>
-                  )}
+                  
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setEditingExpense(e)}
+                      className="p-1 rounded-md border border-border bg-surface-page hover:bg-brand-orange-tint hover:border-brand-orange/40 text-text-secondary hover:text-brand-orange transition-all cursor-pointer"
+                      title="Edit Expense"
+                    >
+                      <IconPencil className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteExpense(e)}
+                      className="p-1 rounded-md border border-border bg-surface-page hover:bg-rose-50 hover:border-rose-200 dark:hover:bg-rose-950/40 text-text-secondary hover:text-rose-600 transition-all cursor-pointer"
+                      title="Delete Expense"
+                    >
+                      <IconTrash className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 </div>
               </div>
             );
@@ -502,12 +555,13 @@ export function ExpensesClient({
               <th className="px-3.5 py-2.5 w-[160px]">Linked Project</th>
               <th className="px-3.5 py-2.5">Notes</th>
               <th className="px-3.5 py-2.5 text-right w-[110px]">Amount</th>
+              <th className="px-3.5 py-2.5 text-right w-[90px]">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border/60 text-xs text-text-primary">
             {filteredExpenses.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-3.5 py-6 text-center text-text-secondary font-medium">
+                <td colSpan={7} className="px-3.5 py-6 text-center text-text-secondary font-medium">
                   No expenses match the selected filters.
                 </td>
               </tr>
@@ -551,6 +605,26 @@ export function ExpensesClient({
                     <td className="px-3.5 py-2.5 text-right font-black text-rose-600 dark:text-rose-400 text-xs whitespace-nowrap">
                       {formatCurrency(Number(e.amount))}
                     </td>
+                    <td className="px-3.5 py-2.5 text-right whitespace-nowrap">
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setEditingExpense(e)}
+                          className="p-1.5 rounded-lg border border-border bg-surface-page hover:bg-brand-orange-tint hover:border-brand-orange/40 text-text-secondary hover:text-brand-orange transition-all cursor-pointer"
+                          title="Edit Expense"
+                        >
+                          <IconPencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteExpense(e)}
+                          className="p-1.5 rounded-lg border border-border bg-surface-page hover:bg-rose-50 hover:border-rose-200 dark:hover:bg-rose-950/40 dark:hover:border-rose-900/50 text-text-secondary hover:text-rose-600 dark:hover:text-rose-400 transition-all cursor-pointer"
+                          title="Delete Expense"
+                        >
+                          <IconTrash className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 );
               })
@@ -558,6 +632,33 @@ export function ExpensesClient({
           </tbody>
         </table>
       </div>
+
+      {/* Edit Expense Sheet Modal */}
+      <Sheet open={Boolean(editingExpense)} onOpenChange={(open) => !open && setEditingExpense(null)}>
+        <SheetContent className="w-full sm:max-w-[420px] p-5 bg-surface-white border-l border-border h-full flex flex-col justify-between overflow-y-auto font-sans">
+          <div>
+            <SheetHeader className="mb-4">
+              <SheetTitle className="text-base font-bold text-text-primary text-left">
+                Edit Expense Record
+              </SheetTitle>
+              <SheetDescription className="text-xs text-text-secondary mt-0.5 text-left">
+                Update expense details, amount, category or linked project.
+              </SheetDescription>
+            </SheetHeader>
+            {editingExpense && (
+              <ExpenseForm
+                projects={projects}
+                existingCustomCategories={existingCustomCategories}
+                initialData={editingExpense}
+                onSubmit={handleUpdateExpense}
+                isPending={isPending}
+                errorMsg={errorMsg}
+                onCancel={() => setEditingExpense(null)}
+              />
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
