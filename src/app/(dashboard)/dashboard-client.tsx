@@ -21,6 +21,8 @@ import {
   IconEye,
   IconPlus,
   IconTarget,
+  IconTrophy,
+  IconReceipt,
 } from "@tabler/icons-react";
 import {
   BarChart,
@@ -135,24 +137,25 @@ export function DashboardClient({ userName, metrics, charts, activity }: Dashboa
         </div>
 
         {!showAllCards ? (
-          /* Clean 4 Core Power Cards */
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-            {/* 1. Cleared Revenue */}
-            <div className="bg-surface-white border border-border/80 rounded-2xl p-4 shadow-2xs hover:border-emerald-500/40 active:scale-[0.98] transition-all duration-200 flex flex-col justify-between">
+          /* Clean 5 Power Hero Cards - Net Profit & Receivables shown upfront first */
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
+            {/* 1. Net Profit */}
+            <div className="bg-surface-white border border-emerald-500/40 rounded-2xl p-4 shadow-2xs hover:border-emerald-500/60 active:scale-[0.98] transition-all duration-200 flex flex-col justify-between relative overflow-hidden">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-extrabold text-text-secondary uppercase tracking-wider">
-                  Cleared Revenue
+                <span className="text-[10px] font-extrabold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">
+                  Net Profit
                 </span>
                 <div className="p-2 bg-emerald-500/10 text-emerald-600 rounded-xl shrink-0">
-                  <IconTrendingUp className="h-4.5 w-4.5" stroke={2} />
+                  <IconTrophy className="h-4.5 w-4.5" stroke={2} />
                 </div>
               </div>
               <div className="mt-3">
-                <div className="text-xl md:text-2xl font-black tracking-tight text-emerald-600">
-                  {formatCurrency(metrics.totalReceivedPayments)}
+                <div className="text-xl md:text-2xl font-black tracking-tight text-emerald-600 dark:text-emerald-400">
+                  {formatCurrency(metrics.netProfit)}
                 </div>
-                <div className="text-[10px] font-bold text-text-secondary mt-1 truncate">
-                  Contracted: <span className="font-extrabold text-text-primary">{formatCurrency(metrics.totalRevenue)}</span>
+                <div className="text-[10px] font-extrabold text-emerald-700 dark:text-emerald-300 mt-1 truncate flex items-center gap-1">
+                  <span>{metrics.profitMargin}% Margin</span>
+                  <span className="text-text-secondary/70 font-medium">· Cleared - Outflows</span>
                 </div>
               </div>
             </div>
@@ -171,13 +174,53 @@ export function DashboardClient({ userName, metrics, charts, activity }: Dashboa
                 <div className="text-xl md:text-2xl font-black tracking-tight text-amber-600">
                   {formatCurrency(metrics.totalPendingPayments)}
                 </div>
-                <div className="text-[10px] font-bold text-text-secondary mt-1 truncate">
-                  Net Profit: <span className="font-extrabold text-emerald-600">{formatCurrency(metrics.netProfit)}</span>
+                <div className="text-[10px] font-bold text-amber-600/80 mt-1 truncate">
+                  Uncollected Milestone Payments
                 </div>
               </div>
             </div>
 
-            {/* 3. Active Projects */}
+            {/* 3. Cleared Revenue */}
+            <div className="bg-surface-white border border-border/80 rounded-2xl p-4 shadow-2xs hover:border-blue-500/40 active:scale-[0.98] transition-all duration-200 flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-extrabold text-text-secondary uppercase tracking-wider">
+                  Cleared Revenue
+                </span>
+                <div className="p-2 bg-blue-500/10 text-blue-600 rounded-xl shrink-0">
+                  <IconCreditCard className="h-4.5 w-4.5" stroke={2} />
+                </div>
+              </div>
+              <div className="mt-3">
+                <div className="text-xl md:text-2xl font-black tracking-tight text-text-primary">
+                  {formatCurrency(metrics.totalReceivedPayments)}
+                </div>
+                <div className="text-[10px] font-bold text-text-secondary mt-1 truncate">
+                  Contracted: <span className="font-extrabold text-text-primary">{formatCurrency(metrics.totalRevenue)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* 4. Total Expenses */}
+            <div className="bg-surface-white border border-border/80 rounded-2xl p-4 shadow-2xs hover:border-rose-500/40 active:scale-[0.98] transition-all duration-200 flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-extrabold text-text-secondary uppercase tracking-wider">
+                  Total Expenses
+                </span>
+                <div className="p-2 bg-rose-500/10 text-rose-600 rounded-xl shrink-0">
+                  <IconReceipt className="h-4.5 w-4.5" stroke={2} />
+                </div>
+              </div>
+              <div className="mt-3">
+                <div className="text-xl md:text-2xl font-black tracking-tight text-rose-600 dark:text-rose-400">
+                  {formatCurrency(metrics.totalExpenses)}
+                </div>
+                <div className="text-[10px] font-bold text-rose-500/80 mt-1 truncate">
+                  Agency &amp; Project Outflows
+                </div>
+              </div>
+            </div>
+
+            {/* 5. Active Projects & Clients */}
             <div className="bg-surface-white border border-border/80 rounded-2xl p-4 shadow-2xs hover:border-brand-orange/40 active:scale-[0.98] transition-all duration-200 flex flex-col justify-between">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-extrabold text-text-secondary uppercase tracking-wider">
@@ -192,27 +235,7 @@ export function DashboardClient({ userName, metrics, charts, activity }: Dashboa
                   {metrics.activeProjectCount} Active
                 </div>
                 <div className="text-[10px] font-bold text-text-secondary mt-1 truncate">
-                  {metrics.totalProjectsCount} Total • {metrics.completedProjectsCount} Completed
-                </div>
-              </div>
-            </div>
-
-            {/* 4. Total Clients */}
-            <div className="bg-surface-white border border-border/80 rounded-2xl p-4 shadow-2xs hover:border-purple-500/40 active:scale-[0.98] transition-all duration-200 flex flex-col justify-between">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-extrabold text-text-secondary uppercase tracking-wider">
-                  Total Clients
-                </span>
-                <div className="p-2 bg-purple-500/10 text-purple-600 rounded-xl shrink-0">
-                  <IconUsers className="h-4.5 w-4.5" stroke={2} />
-                </div>
-              </div>
-              <div className="mt-3">
-                <div className="text-xl md:text-2xl font-black tracking-tight text-text-primary">
-                  {metrics.totalClientCount} Clients
-                </div>
-                <div className="text-[10px] font-bold text-purple-600 mt-1 truncate">
-                  {metrics.totalLeadsCount} Leads in Pipeline
+                  {metrics.totalClientCount} Clients • {metrics.totalLeadsCount} Leads
                 </div>
               </div>
             </div>
@@ -552,11 +575,10 @@ export function DashboardClient({ userName, metrics, charts, activity }: Dashboa
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap active:scale-95 ${
-                  activeTab === tab.id
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap active:scale-95 ${activeTab === tab.id
                     ? "bg-brand-orange text-white shadow-xs font-black"
                     : "bg-surface-page text-text-secondary hover:text-text-primary"
-                }`}
+                  }`}
               >
                 {tab.label}
               </button>

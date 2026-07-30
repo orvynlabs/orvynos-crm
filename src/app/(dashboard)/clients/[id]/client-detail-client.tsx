@@ -139,6 +139,9 @@ type Client = {
   state: string | null;
   gstin: string | null;
   createdAt: string;
+  totalExpenses?: number;
+  netProfit?: number;
+  profitMargin?: number;
   projects: Project[];
   payments: Payment[];
   notes: ClientNote[];
@@ -563,38 +566,75 @@ export function ClientDetailClient({ client }: ClientDetailClientProps) {
         </div>
       </div>
 
-      {/* METRIC GRID PANEL */}
-      <div className="grid gap-2.5 grid-cols-2 lg:grid-cols-4">
-        <div className="bg-surface-white border border-border-custom rounded-xl p-3 sm:p-3.5 shadow-2xs">
-          <span className="text-[10px] font-extrabold text-text-secondary uppercase tracking-wider block">
-            Total Projects
+      {/* METRIC GRID PANEL (5-Card Financial & Profit Summary) */}
+      <div className="grid gap-2.5 grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+        {/* 1. Total Net Profit from this Client */}
+        <div className="bg-surface-white border border-emerald-500/40 rounded-xl p-3 sm:p-3.5 shadow-2xs relative overflow-hidden">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-extrabold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider block">
+              Total Client Profit
+            </span>
+            <span className="text-[9.5px] font-extrabold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded border border-emerald-300 dark:border-emerald-800">
+              {client.profitMargin ?? 0}% Margin
+            </span>
+          </div>
+          <span className="text-lg sm:text-xl font-black text-emerald-600 dark:text-emerald-400 mt-1 block">
+            ₹{(client.netProfit ?? (totalCollected - (client.totalExpenses || 0))).toLocaleString("en-IN")}
           </span>
-          <span className="text-lg sm:text-xl font-extrabold text-foreground mt-0.5 block">
-            {totalProjects}
+          <span className="text-[10px] text-text-secondary font-semibold mt-0.5 block truncate">
+            Revenue minus Project Costs
           </span>
         </div>
-        <div className="bg-surface-white border border-border-custom rounded-xl p-3 sm:p-3.5 shadow-2xs">
-          <span className="text-[10px] font-extrabold text-text-secondary uppercase tracking-wider block">
-            Active Projects
-          </span>
-          <span className="text-lg sm:text-xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-0.5 block">
-            {activeProjects}
-          </span>
-        </div>
+
+        {/* 2. Collected Revenue */}
         <div className="bg-surface-white border border-border-custom rounded-xl p-3 sm:p-3.5 shadow-2xs">
           <span className="text-[10px] font-extrabold text-text-secondary uppercase tracking-wider block">
             Collected Revenue
           </span>
-          <span className="text-lg sm:text-xl font-extrabold text-foreground mt-0.5 block">
+          <span className="text-lg sm:text-xl font-black text-foreground mt-1 block">
             ₹{totalCollected.toLocaleString("en-IN")}
           </span>
+          <span className="text-[10px] text-emerald-600 font-semibold mt-0.5 block truncate">
+            Cleared Payments
+          </span>
         </div>
+
+        {/* 3. Pending Receivables */}
         <div className="bg-surface-white border border-border-custom rounded-xl p-3 sm:p-3.5 shadow-2xs">
           <span className="text-[10px] font-extrabold text-text-secondary uppercase tracking-wider block">
-            Pending Balance
+            Pending Receivables
           </span>
-          <span className="text-lg sm:text-xl font-extrabold text-amber-600 dark:text-amber-400 mt-0.5 block">
+          <span className="text-lg sm:text-xl font-black text-amber-600 dark:text-amber-400 mt-1 block">
             ₹{totalPending.toLocaleString("en-IN")}
+          </span>
+          <span className="text-[10px] text-amber-600/80 font-semibold mt-0.5 block truncate">
+            Uncollected Invoices
+          </span>
+        </div>
+
+        {/* 4. Project Expenses */}
+        <div className="bg-surface-white border border-border-custom rounded-xl p-3 sm:p-3.5 shadow-2xs">
+          <span className="text-[10px] font-extrabold text-text-secondary uppercase tracking-wider block">
+            Project Costs / Expenses
+          </span>
+          <span className="text-lg sm:text-xl font-black text-rose-600 dark:text-rose-400 mt-1 block">
+            ₹{(client.totalExpenses || 0).toLocaleString("en-IN")}
+          </span>
+          <span className="text-[10px] text-rose-500/80 font-semibold mt-0.5 block truncate">
+            Direct Outflows
+          </span>
+        </div>
+
+        {/* 5. Projects Overview */}
+        <div className="bg-surface-white border border-border-custom rounded-xl p-3 sm:p-3.5 shadow-2xs">
+          <span className="text-[10px] font-extrabold text-text-secondary uppercase tracking-wider block">
+            Projects Overview
+          </span>
+          <span className="text-lg sm:text-xl font-black text-foreground mt-1 block">
+            {activeProjects} <span className="text-xs font-normal text-text-secondary">/ {totalProjects} Active</span>
+          </span>
+          <span className="text-[10px] text-text-secondary font-semibold mt-0.5 block truncate">
+            {totalProjects} Total Contracted
           </span>
         </div>
       </div>

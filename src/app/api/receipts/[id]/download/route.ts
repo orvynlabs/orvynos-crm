@@ -16,7 +16,7 @@ export const runtime = 'nodejs';
 
 // Bump this number whenever the receipt template design changes.
 // It automatically invalidates every previously cached PDF (disk + R2).
-const TEMPLATE_VERSION = 21;
+const TEMPLATE_VERSION = 24;
 
 export async function GET(
   request: NextRequest,
@@ -103,6 +103,13 @@ export async function GET(
 
     // Load and inline local logo assets as base64. Uses replaceAll to replace BOTH preload and image tags.
     try {
+      const docLogoPath = path.join(process.cwd(), 'public/brand/document-logo.png');
+      if (fs.existsSync(docLogoPath)) {
+        const docLogoBuffer = fs.readFileSync(docLogoPath);
+        const docLogoBase64 = `data:image/png;base64,${docLogoBuffer.toString('base64')}`;
+        html = html.replaceAll('/brand/document-logo.png', docLogoBase64);
+      }
+
       const logoPath = path.join(process.cwd(), 'public/brand/logo.png');
       if (fs.existsSync(logoPath)) {
         const logoBuffer = fs.readFileSync(logoPath);

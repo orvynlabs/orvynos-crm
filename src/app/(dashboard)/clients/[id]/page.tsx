@@ -9,7 +9,7 @@ export default async function ClientDetailPage({
 }) {
   const { id } = await params;
 
-  const [client, allDocs, allProposals, allInvoices, allAgreements] = await Promise.all([
+  const [client, clientExpensesRaw, allDocs, allProposals, allInvoices, allAgreements] = await Promise.all([
     withRetry(() =>
       prisma.client.findUnique({
         where: { id },
@@ -35,6 +35,16 @@ export default async function ClientDetailPage({
             orderBy: { createdAt: "desc" },
           },
         },
+      })
+    ),
+    withRetry(() =>
+      prisma.expense.findMany({
+        where: {
+          project: {
+            clientId: id,
+          },
+        },
+        select: { amount: true },
       })
     ),
     withRetry(() =>
@@ -67,12 +77,22 @@ export default async function ClientDetailPage({
     notFound();
   }
 
+  const totalClientExpenses = (clientExpensesRaw || []).reduce((sum, e) => sum + Number(e.amount), 0);
+  const totalCollected = client.payments
+    .filter((p) => p.status === "COMPLETED")
+    .reduce((sum, p) => sum + Number(p.amount), 0);
+  const clientNetProfit = totalCollected - totalClientExpenses;
+  const clientProfitMargin = totalCollected > 0 ? Math.round((clientNetProfit / totalCollected) * 100) : 0;
+
   const formattedClient = {
     id: client.id,
     name: client.name,
     logo: client.logo,
     contactName: client.contactName,
     email: client.email,
+    totalExpenses: totalClientExpenses,
+    netProfit: clientNetProfit,
+    profitMargin: clientProfitMargin,
     phone: client.phone,
     secondaryPhone: client.secondaryPhone,
     website: client.website,

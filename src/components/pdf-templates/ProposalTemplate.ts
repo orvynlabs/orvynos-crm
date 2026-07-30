@@ -427,7 +427,7 @@ export function renderProposalHtml(props: ProposalTemplateProps): string {
             </text>
             <circle cx="18" cy="70" r="2" fill="#360CAF" />
             <circle cx="122" cy="70" r="2" fill="#360CAF" />
-            <image href="/brand/document-logo.png" x="32" y="44" width="76" height="52" preserveAspectRatio="xMidYMid meet" />
+            <image href="/brand/document-logo.png" xlink:href="/brand/document-logo.png" x="32" y="44" width="76" height="52" preserveAspectRatio="xMidYMid meet" />
           </svg>
           <div class="seal-caption">Authorized by <b>Orvyn Labs</b></div>
         </div>

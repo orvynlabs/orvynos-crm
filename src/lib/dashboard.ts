@@ -19,6 +19,7 @@ export type MetricCardData = {
   proposalValueTotal: number;
   pendingAgreementsCount: number;
   documentCount: number;
+  profitMargin: number;
 };
 
 // ⚡ Ultra-Fast Server Memory Cache (< 5ms Dashboard Load)
@@ -70,6 +71,7 @@ export const getCoreDashboardMetrics = unstable_cache(
     const totalReceived = Number(completedPayments._sum.amount || 0);
     const netProfit = totalReceived - totalExpenses;
     const totalPendingPayments = Math.max(0, totalContracted - totalReceived);
+    const profitMargin = totalReceived > 0 ? Math.round((netProfit / totalReceived) * 100) : 0;
 
     const activeProjectCount = projects.filter(
       (p) => p.status === ProjectStatus.ONGOING || p.status === ProjectStatus.NEW || p.status === ProjectStatus.REVIEW
@@ -84,6 +86,7 @@ export const getCoreDashboardMetrics = unstable_cache(
       totalReceivedPayments: totalReceived,
       totalExpenses,
       netProfit,
+      profitMargin,
       totalPendingPayments,
       activeProjectCount,
       totalProjectsCount: projects.length,
@@ -97,7 +100,7 @@ export const getCoreDashboardMetrics = unstable_cache(
       documentCount,
     };
   },
-  ["dashboard-core-metrics-v3"],
+  ["dashboard-core-metrics-v4"],
   { revalidate: 30, tags: ["dashboard-metrics"] }
 );
 
