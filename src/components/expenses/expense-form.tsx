@@ -1,16 +1,19 @@
 "use client";
 
+import { useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { IconLoader, IconAlertCircle, IconBuildingStore, IconBriefcase, IconInfoCircle } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { ExpenseCategory } from "@/lib/enums";
+import { parseExpenseCategory } from "@/lib/expenses";
 
 const expenseSchema = z.object({
   title: z.string().min(1, "Title/Description is required"),
   amount: z.number().positive("Amount must be greater than 0"),
-  category: z.nativeEnum(ExpenseCategory, { message: "Select a valid category" }),
+  category: z.string().min(1, "Category is required"),
+  customCategory: z.string().optional(),
   date: z.string().min(1, "Expense date is required"),
   projectId: z.string().optional().or(z.literal("")),
   notes: z.string().optional().or(z.literal("")),
@@ -24,8 +27,24 @@ export type ProjectOption = {
 };
 
 type ExpenseFormProps = {
-  onSubmit: (data: ExpenseFormValues) => void;
+  onSubmit: (data: {
+    title: string;
+    amount: number;
+    category: ExpenseCategory;
+    date: string;
+    projectId?: string;
+    notes?: string;
+  }) => void;
   projects: ProjectOption[];
+  existingCustomCategories?: string[];
+  initialData?: {
+    title: string;
+    amount: number;
+    category: ExpenseCategory | string;
+    date: string;
+    projectId?: string | null;
+    notes?: string | null;
+  };
   isPending?: boolean;
   errorMsg?: string;
   onCancel: () => void;
@@ -34,11 +53,28 @@ type ExpenseFormProps = {
 export function ExpenseForm({
   onSubmit,
   projects,
+  existingCustomCategories = [],
+  initialData,
   isPending = false,
   errorMsg = "",
   onCancel,
 }: ExpenseFormProps) {
-  const defaultDate = new Date().toISOString().split("T")[0];
+  const defaultDate = initialData?.date
+    ? typeof initialData.date === "string"
+      ? initialData.date.split("T")[0]
+      : new Date(initialData.date).toISOString().split("T")[0]
+    : new Date().toISOString().split("T")[0];
+
+  const parsedInitial = initialData ? parseExpenseCategory({ category: initialData.category, notes: initialData.notes }) : null;
+
+  const [customCategoryInput, setCustomCategoryInput] = useState(
+    parsedInitial?.isCustom ? parsedInitial.displayCategory : ""
+  );
+  const [customCatError, setCustomCatError] = useState("");
+
+  const initialCatValue = parsedInitial?.isCustom
+    ? "CUSTOM"
+    : (initialData?.category as string) || ExpenseCategory.SOFTWARE;
 
   const {
     register,
@@ -49,12 +85,13 @@ export function ExpenseForm({
   } = useForm<ExpenseFormValues>({
     resolver: zodResolver(expenseSchema),
     defaultValues: {
-      title: "",
-      amount: undefined as any,
-      category: ExpenseCategory.SOFTWARE,
+      title: initialData?.title || "",
+      amount: initialData?.amount ?? (undefined as any),
+      category: initialCatValue,
+      customCategory: parsedInitial?.isCustom ? parsedInitial.displayCategory : "",
       date: defaultDate,
-      projectId: "",
-      notes: "",
+      projectId: initialData?.projectId || "",
+      notes: parsedInitial?.isCustom ? parsedInitial.cleanNotes : initialData?.notes || "",
     },
   });
 
@@ -64,8 +101,39 @@ export function ExpenseForm({
   const selectedProject = projects.find((p) => p.id === selectedProjectId);
   const isProjectExpense = Boolean(selectedProjectId);
 
+  const handleLocalSubmit = (values: ExpenseFormValues) => {
+    setCustomCatError("");
+    let finalCategoryEnum: ExpenseCategory = ExpenseCategory.OTHER;
+    let finalNotes = values.notes ? values.notes.trim() : "";
+
+    if (values.category === "CUSTOM") {
+      const customName = customCategoryInput.trim();
+      if (!customName) {
+        setCustomCatError("Please enter your custom category name.");
+        return;
+      }
+      finalCategoryEnum = ExpenseCategory.OTHER;
+      finalNotes = `[Category: ${customName}]${finalNotes ? `\n${finalNotes}` : ""}`;
+    } else if (Object.values(ExpenseCategory).includes(values.category as any)) {
+      finalCategoryEnum = values.category as ExpenseCategory;
+    } else {
+      // It's a previously saved custom category name selected from dropdown
+      finalCategoryEnum = ExpenseCategory.OTHER;
+      finalNotes = `[Category: ${values.category.trim()}]${finalNotes ? `\n${finalNotes}` : ""}`;
+    }
+
+    onSubmit({
+      title: values.title,
+      amount: values.amount,
+      category: finalCategoryEnum,
+      date: values.date,
+      projectId: values.projectId || undefined,
+      notes: finalNotes || undefined,
+    });
+  };
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 font-sans text-left">
+    <form onSubmit={handleSubmit(handleLocalSubmit)} className="space-y-4 font-sans text-left">
       {errorMsg && (
         <div className="bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 p-3 rounded-lg text-xs border border-rose-200 dark:border-rose-900/50 flex items-center gap-2 font-medium">
           <IconAlertCircle className="h-4 w-4 shrink-0" />
@@ -193,7 +261,7 @@ export function ExpenseForm({
         </div>
       </div>
 
-      {/* Category Dropdown with explicit labels */}
+      {/* Category Dropdown */}
       <div className="space-y-1.5">
         <label className="text-[10px] font-extrabold text-text-primary uppercase tracking-wider block">
           Category <span className="text-rose-500">*</span>
@@ -211,11 +279,43 @@ export function ExpenseForm({
           <option value={ExpenseCategory.TRAVEL}>Travel &amp; Meetings — Company Expense</option>
           <option value={ExpenseCategory.TEAM_PAYMENTS}>Team Payments &amp; Payouts — Company Expense</option>
           <option value={ExpenseCategory.OTHER}>Other Business Expense — Company Expense</option>
+          
+          {/* Previously saved custom categories */}
+          {existingCustomCategories.map((c) => (
+            <option key={c} value={c}>
+              🏷️ {c} (Custom Category)
+            </option>
+          ))}
+
+          <option value="CUSTOM">✏️ Write Custom Category...</option>
         </select>
         {errors.category && (
           <p className="text-[10px] font-bold text-rose-500">{errors.category.message}</p>
         )}
       </div>
+
+      {/* Custom Category Input (Visible when Write Custom Category is selected) */}
+      {selectedCategory === "CUSTOM" && (
+        <div className="space-y-1.5 p-3 bg-amber-50/70 dark:bg-amber-950/20 border border-amber-300 dark:border-amber-900/40 rounded-xl animate-in fade-in slide-in-from-top-1 duration-150">
+          <label className="text-[10px] font-extrabold text-amber-800 dark:text-amber-300 uppercase tracking-wider block">
+            Custom Category Name <span className="text-rose-500">*</span>
+          </label>
+          <input
+            type="text"
+            disabled={isPending}
+            value={customCategoryInput}
+            onChange={(e) => {
+              setCustomCategoryInput(e.target.value);
+              if (customCatError) setCustomCatError("");
+            }}
+            placeholder="e.g. Legal Fees, Hardware Equipment, Client Refreshments..."
+            className="flex h-9 w-full rounded-lg border border-amber-300 dark:border-amber-700 bg-surface-white px-3 py-1 text-xs shadow-2xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-amber-500 font-bold"
+          />
+          {customCatError && (
+            <p className="text-[10px] font-bold text-rose-500 mt-1">{customCatError}</p>
+          )}
+        </div>
+      )}
 
       {/* Live Classification Summary Preview */}
       <div className="p-2.5 bg-surface-page border border-border/70 rounded-xl flex items-start gap-2 text-xs">
@@ -269,10 +369,10 @@ export function ExpenseForm({
           {isPending ? (
             <>
               <IconLoader className="h-3.5 w-3.5 animate-spin" />
-              Saving...
+              {initialData ? "Saving..." : "Logging..."}
             </>
           ) : (
-            "Log Expense"
+            initialData ? "Save Changes" : "Log Expense"
           )}
         </Button>
       </div>

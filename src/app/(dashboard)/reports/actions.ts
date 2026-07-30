@@ -4,6 +4,7 @@ import { unstable_cache } from "next/cache";
 import { prisma, withRetry } from "@/lib/db";
 import { getTotalRevenue, getTotalExpenses, getNetProfit } from "@/lib/finance";
 import { PaymentStatus, ProjectStatus } from "@/generated/prisma/client";
+import { parseExpenseCategory } from "@/lib/expenses";
 
 export type ReportDateFilter = "THIS_MONTH" | "LAST_MONTH" | "THIS_QUARTER" | "YTD" | "ALL";
 
@@ -103,7 +104,8 @@ export async function getReportsData(preset: ReportDateFilter = "ALL") {
     // Category breakdown for expenses
     const expenseByCategoryMap: Record<string, number> = {};
     expenseItems.forEach((exp) => {
-      const cat = exp.category;
+      const parsed = parseExpenseCategory(exp);
+      const cat = parsed.displayCategory;
       expenseByCategoryMap[cat] = (expenseByCategoryMap[cat] || 0) + Number(exp.amount);
     });
 
@@ -132,14 +134,17 @@ export async function getReportsData(preset: ReportDateFilter = "ALL") {
           reference: p.reference || "N/A",
           receiptNumber: p.receiptNumber || "N/A",
         })),
-        expenseItems: expenseItems.map((e) => ({
-          id: e.id,
-          title: e.title,
-          category: e.category,
-          amount: Number(e.amount),
-          date: e.date.toISOString(),
-          projectName: e.project?.name || "General Business Expense",
-        })),
+        expenseItems: expenseItems.map((e) => {
+          const parsed = parseExpenseCategory(e);
+          return {
+            id: e.id,
+            title: e.title,
+            category: parsed.displayCategory,
+            amount: Number(e.amount),
+            date: e.date.toISOString(),
+            projectName: e.project?.name || "General Business Expense",
+          };
+        }),
         expenseCategories,
         projectsReport: projects.map((p) => {
           const budget = Number(p.budget || 0);

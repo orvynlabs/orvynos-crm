@@ -1,14 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   IconTarget,
   IconTrophy,
-  IconUsers,
   IconCheck,
   IconChevronRight,
   IconSparkles,
+  IconPencil,
+  IconDeviceFloppy,
+  IconRotate,
 } from "@tabler/icons-react";
 import {
   Sheet,
@@ -20,18 +22,68 @@ import {
 
 export function RevenueTargetWidget() {
   const [isOpen, setIsOpen] = useState(false);
-  
-  // 🎯 Target Config: 50K Goal, 29K Achieved
-  const targetGoal = 50000;
-  const currentAchieved = 29000;
-  const remainingAmount = targetGoal - currentAchieved;
-  const percentage = Math.round((currentAchieved / targetGoal) * 100);
-  const ownersCount = 4;
-  const perOwnerAchieved = Math.round(currentAchieved / ownersCount);
-  const perOwnerTarget = Math.round(targetGoal / ownersCount);
+  const [isEditing, setIsEditing] = useState(false);
+
+  // Default values: 50K Goal, 29K Achieved
+  const [targetGoal, setTargetGoal] = useState(50000);
+  const [currentAchieved, setCurrentAchieved] = useState(29000);
+
+  // Form edit states
+  const [editTarget, setEditTarget] = useState(50000);
+  const [editAchieved, setEditAchieved] = useState(29000);
+
+  useEffect(() => {
+    try {
+      const savedTarget = localStorage.getItem("orvynos_revenue_target");
+      const savedAchieved = localStorage.getItem("orvynos_revenue_achieved");
+      if (savedTarget) {
+        const parsedT = Number(savedTarget);
+        if (!isNaN(parsedT) && parsedT > 0) {
+          setTargetGoal(parsedT);
+          setEditTarget(parsedT);
+        }
+      }
+      if (savedAchieved) {
+        const parsedA = Number(savedAchieved);
+        if (!isNaN(parsedA) && parsedA >= 0) {
+          setCurrentAchieved(parsedA);
+          setEditAchieved(parsedA);
+        }
+      }
+    } catch (e) {}
+  }, []);
+
+  const handleSaveGoal = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editTarget <= 0) return;
+    setTargetGoal(editTarget);
+    setCurrentAchieved(Math.max(0, editAchieved));
+    try {
+      localStorage.setItem("orvynos_revenue_target", String(editTarget));
+      localStorage.setItem("orvynos_revenue_achieved", String(Math.max(0, editAchieved)));
+    } catch (err) {}
+    setIsEditing(false);
+  };
+
+  const handlePresetSelect = (target: number) => {
+    setEditTarget(target);
+  };
+
+  const remainingAmount = Math.max(0, targetGoal - currentAchieved);
+  const percentage = Math.min(100, Math.round((currentAchieved / targetGoal) * 100));
 
   const fmt = (val: number) =>
     new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 }).format(val);
+
+  const formatShortK = (val: number) => {
+    if (val >= 100000) {
+      return `₹${(val / 100000).toLocaleString('en-IN', { maximumFractionDigits: 1 })}L`;
+    }
+    if (val >= 1000) {
+      return `₹${Math.round(val / 1000)}K`;
+    }
+    return `₹${val}`;
+  };
 
   return (
     <>
@@ -42,7 +94,7 @@ export function RevenueTargetWidget() {
         whileTap={{ scale: 0.95 }}
         onClick={() => setIsOpen(true)}
         className="flex sm:hidden items-center justify-center h-8 w-8 rounded-full border border-brand-orange/30 bg-brand-orange-tint/60 text-brand-orange hover:bg-brand-orange hover:text-white transition-all cursor-pointer relative shrink-0 shadow-2xs"
-        title="Co-Founders 50K Revenue Goal"
+        title="Revenue Target Goal Tracker"
       >
         <IconTarget className="h-4 w-4" />
         <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
@@ -76,7 +128,7 @@ export function RevenueTargetWidget() {
         {/* Crisp Single-Line Goal Counter */}
         <div className="flex items-center gap-1.5 text-xs whitespace-nowrap">
           <span className="font-extrabold text-foreground tracking-tight">
-            ₹29,000 <span className="text-text-secondary/75 font-medium text-[11px]">/ ₹50K Goal</span>
+            {formatShortK(currentAchieved)} <span className="text-text-secondary/75 font-medium text-[11px]">/ {formatShortK(targetGoal)} Goal</span>
           </span>
         </div>
 
@@ -85,7 +137,7 @@ export function RevenueTargetWidget() {
           <motion.div
             initial={{ width: 0 }}
             animate={{ width: `${percentage}%` }}
-            transition={{ duration: 1, ease: "easeOut" }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
             className="h-full rounded-full bg-gradient-to-r from-brand-orange via-orange-500 to-amber-500"
           />
         </div>
@@ -103,21 +155,118 @@ export function RevenueTargetWidget() {
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
         <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col h-full bg-surface-white border-l border-border font-sans">
           {/* Header */}
-          <div className="p-5 border-b border-border bg-gradient-to-br from-brand-orange/15 via-surface-white to-orange-500/10">
+          <div className="p-5 border-b border-border bg-gradient-to-br from-brand-orange/15 via-surface-white to-orange-500/10 flex items-start justify-between gap-3">
             <SheetHeader className="text-left">
               <SheetTitle className="flex items-center gap-2 text-base font-extrabold text-foreground">
                 <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-brand-orange text-white shadow-sm">
                   <IconTrophy className="h-5 w-5" />
                 </div>
-                <span>Co-Founders 50K Revenue Goal</span>
+                <span>Revenue Target Goal</span>
               </SheetTitle>
               <SheetDescription className="text-xs text-text-secondary mt-1">
-                Milestone revenue tracking shared across the 4 Owners of Orvyn Labs.
+                Milestone revenue target &amp; achievement tracker for Orvyn OS.
               </SheetDescription>
             </SheetHeader>
+
+            <button
+              type="button"
+              onClick={() => {
+                setEditTarget(targetGoal);
+                setEditAchieved(currentAchieved);
+                setIsEditing(!isEditing);
+              }}
+              className={`p-2 rounded-xl border text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shrink-0 ${
+                isEditing
+                  ? "bg-stone-200 dark:bg-stone-800 border-stone-300 text-stone-700 dark:text-stone-300"
+                  : "bg-brand-orange-tint border-brand-orange/30 text-brand-orange hover:bg-brand-orange hover:text-white"
+              }`}
+            >
+              <IconPencil className="h-3.5 w-3.5" />
+              <span>{isEditing ? "Close" : "Update Goal"}</span>
+            </button>
           </div>
 
           <div className="flex-1 overflow-y-auto p-5 space-y-5">
+            {/* EDIT GOAL FORM (When user clicks Update Goal) */}
+            {isEditing && (
+              <form onSubmit={handleSaveGoal} className="p-4 rounded-2xl border border-brand-orange/40 bg-amber-50/50 dark:bg-amber-950/20 space-y-3.5 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-extrabold text-brand-orange uppercase tracking-wider flex items-center gap-1.5">
+                    <IconPencil className="h-3.5 w-3.5" />
+                    Configure Target Goal
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditTarget(50000);
+                      setEditAchieved(29000);
+                    }}
+                    className="text-[10px] text-text-secondary hover:text-text-primary underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <IconRotate className="h-3 w-3" /> Reset Defaults
+                  </button>
+                </div>
+
+                {/* Quick Presets */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-text-secondary uppercase">Quick Target Presets</label>
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+                    {[
+                      { label: "₹50K Goal", target: 50000 },
+                      { label: "₹1 Lakh Goal", target: 100000 },
+                      { label: "₹2.5 Lakhs", target: 250000 },
+                      { label: "₹5 Lakhs", target: 500000 },
+                    ].map((preset) => (
+                      <button
+                        key={preset.target}
+                        type="button"
+                        onClick={() => handlePresetSelect(preset.target)}
+                        className={`px-2.5 py-1 rounded-lg text-[10.5px] font-bold border transition-all cursor-pointer whitespace-nowrap ${
+                          editTarget === preset.target
+                            ? "bg-brand-orange text-white border-brand-orange font-black"
+                            : "bg-surface-white border-border text-text-secondary hover:border-brand-orange/40"
+                        }`}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Target Amount */}
+                <div className="space-y-1">
+                  <label className="text-[10.5px] font-extrabold text-foreground">Target Goal Amount (INR)</label>
+                  <input
+                    type="number"
+                    step="1000"
+                    value={editTarget}
+                    onChange={(e) => setEditTarget(Number(e.target.value))}
+                    className="w-full h-9 rounded-xl border border-border bg-surface-white px-3 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-brand-orange"
+                  />
+                </div>
+
+                {/* Achieved Amount */}
+                <div className="space-y-1">
+                  <label className="text-[10.5px] font-extrabold text-foreground">Achieved Amount (INR)</label>
+                  <input
+                    type="number"
+                    step="1000"
+                    value={editAchieved}
+                    onChange={(e) => setEditAchieved(Number(e.target.value))}
+                    className="w-full h-9 rounded-xl border border-border bg-surface-white px-3 text-xs font-bold focus:outline-none focus:ring-1 focus-visible:ring-brand-orange"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full h-9 rounded-xl bg-brand-orange hover:bg-brand-orange-hover text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs active:scale-[0.98] transition-all cursor-pointer"
+                >
+                  <IconDeviceFloppy className="h-4 w-4" />
+                  Save Target Changes
+                </button>
+              </form>
+            )}
+
             {/* Main Progress Ring & Stat Banner */}
             <div className="p-5 rounded-2xl border border-brand-orange/30 bg-gradient-to-br from-brand-orange-tint/50 via-surface-page to-orange-500/10 relative overflow-hidden space-y-4 shadow-2xs">
               <div className="flex items-center justify-between">
@@ -134,7 +283,7 @@ export function RevenueTargetWidget() {
                     {percentage}%
                   </span>
                   <div className="text-[10px] font-bold text-text-secondary">
-                    {fmt(remainingAmount)} left
+                    {fmt(remainingAmount)} remaining
                   </div>
                 </div>
               </div>
@@ -144,16 +293,16 @@ export function RevenueTargetWidget() {
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${percentage}%` }}
-                  transition={{ duration: 1.2, ease: "easeOut" }}
+                  transition={{ duration: 1, ease: "easeOut" }}
                   className="h-full rounded-full bg-gradient-to-r from-brand-orange via-orange-500 to-amber-500 shadow-2xs"
                 />
               </div>
 
               <div className="flex items-center justify-between text-[11px] font-bold text-text-secondary pt-1">
                 <span className="flex items-center gap-1 text-brand-orange font-extrabold">
-                  <IconCheck className="h-3.5 w-3.5" /> ₹29K Collected
+                  <IconCheck className="h-3.5 w-3.5" /> {fmt(currentAchieved)} Collected
                 </span>
-                <span>Goal: ₹50K Target</span>
+                <span>Goal: {fmt(targetGoal)} Target</span>
               </div>
             </div>
 
@@ -166,11 +315,11 @@ export function RevenueTargetWidget() {
               <ul className="space-y-1.5 text-text-secondary text-[11.5px] leading-relaxed">
                 <li className="flex items-start gap-2">
                   <span className="h-1.5 w-1.5 rounded-full bg-brand-orange mt-1.5 shrink-0" />
-                  <span><strong>58% Completed</strong> — ₹29,000 INR successfully generated from client projects &amp; milestone billing.</span>
+                  <span><strong>{percentage}% Completed</strong> — {fmt(currentAchieved)} INR successfully generated &amp; tracked in Orvyn OS.</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="h-1.5 w-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0" />
-                  <span><strong>₹21,000 Remaining</strong> — Only ₹21,000 INR needed to achieve the official 50K milestone!</span>
+                  <span><strong>{fmt(remainingAmount)} Remaining</strong> — Amount needed to hit the official target milestone!</span>
                 </li>
               </ul>
             </div>

@@ -23,6 +23,7 @@ import {
   IconX,
 } from "@tabler/icons-react";
 import { ExpenseCategory } from "@/lib/enums";
+import { parseExpenseCategory, formatStandardExpenseCategory } from "@/lib/expenses";
 
 import { toast } from "@/components/ui/toast-provider";
 
@@ -125,13 +126,22 @@ export function ExpensesClient({
     });
   };
 
+  const existingCustomCategories = Array.from(
+    new Set(
+      initialExpenses
+        .map((e) => parseExpenseCategory(e))
+        .filter((p) => p.isCustom)
+        .map((p) => p.displayCategory)
+    )
+  );
+
   const handleLogExpense = async (data: any) => {
     setErrorMsg("");
     startTransition(async () => {
       const result = await createExpense(data);
       if (result.success) {
         setIsSheetOpen(false);
-        toast.success("Expense Logged", `${formatCurrency(data.amount)} logged under ${data.category}.`);
+        toast.success("Expense Logged 💸", `${formatCurrency(data.amount)} expense recorded successfully.`);
         router.refresh();
       } else {
         const err = result.error || "Failed to log expense.";
@@ -148,12 +158,18 @@ export function ExpensesClient({
   const totalBusinessOutflows = businessExpensesOnly.reduce((sum, e) => sum + Number(e.amount), 0);
 
   const filteredExpenses = initialExpenses.filter((e) => {
+    const parsed = parseExpenseCategory(e);
     const matchesSearch =
       e.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      parsed.displayCategory.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (e.project?.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (e.notes || "").toLowerCase().includes(searchQuery.toLowerCase());
+      parsed.cleanNotes.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesCategory = selectedCategory === "ALL" || e.category === selectedCategory;
+    const matchesCategory =
+      selectedCategory === "ALL" ||
+      (selectedCategory.startsWith("CUSTOM:")
+        ? parsed.displayCategory === selectedCategory.replace("CUSTOM:", "")
+        : e.category === selectedCategory);
 
     const expenseDate = new Date(e.date);
     const matchesStart = !startDateFilter || expenseDate >= new Date(startDateFilter);
@@ -199,6 +215,7 @@ export function ExpensesClient({
               </SheetHeader>
               <ExpenseForm
                 projects={projects}
+                existingCustomCategories={existingCustomCategories}
                 onSubmit={handleLogExpense}
                 isPending={isPending}
                 errorMsg={errorMsg}
@@ -351,6 +368,11 @@ export function ExpensesClient({
               <option value={ExpenseCategory.TRAVEL}>Travel &amp; Meetings — Company</option>
               <option value={ExpenseCategory.TEAM_PAYMENTS}>Team Payments — Company</option>
               <option value={ExpenseCategory.OTHER}>Other Business Expense — Company</option>
+              {existingCustomCategories.map((c) => (
+                <option key={c} value={`CUSTOM:${c}`}>
+                  🏷️ {c} (Custom Category)
+                </option>
+              ))}
             </select>
           </div>
         </div>
@@ -404,6 +426,7 @@ export function ExpensesClient({
           </div>
         ) : (
           filteredExpenses.map((e) => {
+            const parsed = parseExpenseCategory(e);
             const catConf = getCategoryConfig(e.category);
             return (
               <div
@@ -415,21 +438,32 @@ export function ExpensesClient({
                     <span className="text-xs md:text-sm font-bold text-stone-900 dark:text-stone-100 block truncate">
                       {e.title}
                     </span>
-                    <span className="text-xs text-text-secondary font-medium block">
-                      {formatDate(e.date)}
-                    </span>
+                    <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                      <span className={`inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-md border ${
+                        parsed.isCustom
+                          ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/50"
+                          : catConf.badge
+                      }`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${parsed.isCustom ? "bg-amber-500" : catConf.dot}`} />
+                        {parsed.displayCategory}
+                      </span>
+
+                      <span className="text-[10px] text-text-secondary font-medium">
+                        · {formatDate(e.date)}
+                      </span>
+                    </div>
                   </div>
+
                   <div className="text-right shrink-0">
                     <span className="text-sm font-bold text-rose-600 dark:text-rose-400 block">
                       {formatCurrency(Number(e.amount))}
                     </span>
-                    <span className={`inline-flex items-center gap-1 mt-1 text-[10px] font-extrabold px-2 py-0.5 rounded-md border ${
+                    <span className={`inline-flex items-center gap-1 mt-1 text-[9.5px] font-extrabold px-1.5 py-0.5 rounded-md border ${
                       e.projectId
                         ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900/50"
                         : "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-900/50"
                     }`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${e.projectId ? "bg-emerald-500" : "bg-blue-500"}`} />
-                      {e.projectId ? "Client Project Cost" : "Company Expense"}
+                      {e.projectId ? "Project Cost" : "Company Expense"}
                     </span>
                   </div>
                 </div>
@@ -445,9 +479,9 @@ export function ExpensesClient({
                       <span className="text-stone-400 italic font-normal">Company Expense</span>
                     )}
                   </span>
-                  {e.notes && (
+                  {parsed.cleanNotes && (
                     <span className="text-xs text-text-secondary truncate max-w-[140px] font-normal italic">
-                      {e.notes}
+                      {parsed.cleanNotes}
                     </span>
                   )}
                 </div>
@@ -464,7 +498,7 @@ export function ExpensesClient({
             <tr className="bg-stone-50/80 dark:bg-stone-900/40 border-b border-border text-[10.5px] font-black text-text-secondary uppercase tracking-wider">
               <th className="px-3.5 py-2.5 w-[110px]">Date</th>
               <th className="px-3.5 py-2.5">Title / Description</th>
-              <th className="px-3.5 py-2.5 w-[150px]">Category</th>
+              <th className="px-3.5 py-2.5 w-[160px]">Category</th>
               <th className="px-3.5 py-2.5 w-[160px]">Linked Project</th>
               <th className="px-3.5 py-2.5">Notes</th>
               <th className="px-3.5 py-2.5 text-right w-[110px]">Amount</th>
@@ -479,6 +513,7 @@ export function ExpensesClient({
               </tr>
             ) : (
               filteredExpenses.map((e) => {
+                const parsed = parseExpenseCategory(e);
                 const catConf = getCategoryConfig(e.category);
                 return (
                   <tr key={e.id} className="hover:bg-stone-50/50 dark:hover:bg-stone-800/30 transition-colors">
@@ -490,12 +525,12 @@ export function ExpensesClient({
                     </td>
                     <td className="px-3.5 py-2.5">
                       <span className={`inline-flex items-center gap-1.5 text-[11px] font-extrabold px-2.5 py-1 rounded-lg border w-fit ${
-                        e.projectId
-                          ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900/50"
-                          : "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-900/50"
+                        parsed.isCustom
+                          ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/50"
+                          : catConf.badge
                       }`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${e.projectId ? "bg-emerald-500" : "bg-blue-500"}`} />
-                        {e.projectId ? "Client Project Cost" : "Company Expense"}
+                        <span className={`w-1.5 h-1.5 rounded-full ${parsed.isCustom ? "bg-amber-500" : catConf.dot}`} />
+                        {parsed.displayCategory}
                       </span>
                     </td>
                     <td className="px-3.5 py-2.5 text-xs font-semibold text-text-secondary">
@@ -511,7 +546,7 @@ export function ExpensesClient({
                       )}
                     </td>
                     <td className="px-3.5 py-2.5 text-xs text-text-secondary max-w-[200px] truncate font-normal">
-                      {e.notes || <span className="text-stone-300 dark:text-stone-600">—</span>}
+                      {parsed.cleanNotes || <span className="text-stone-300 dark:text-stone-600">—</span>}
                     </td>
                     <td className="px-3.5 py-2.5 text-right font-black text-rose-600 dark:text-rose-400 text-xs whitespace-nowrap">
                       {formatCurrency(Number(e.amount))}
