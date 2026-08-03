@@ -26,6 +26,7 @@ import {
   IconEye,
   IconAward,
   IconCircleCheck,
+  IconEdit,
 } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -42,6 +43,10 @@ import {
   deleteGeneratorItem,
   updateGeneratorStatus,
   regenerateAgreementPdf,
+  getGeneratorItemDetails,
+  updateProposal,
+  updateInvoice,
+  updateAgreement,
 } from "./actions";
 import { useToast } from "@/components/ui/toast-provider";
 import { confirmModal } from "@/components/ui/confirm-provider";
@@ -254,6 +259,9 @@ export function GeneratorsClient({
   // Sheet state
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sheetType, setSheetType] = useState<"proposal" | "invoice" | "agreement">("proposal");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingType, setEditingType] = useState<"proposal" | "invoice" | "agreement" | null>(null);
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
@@ -407,11 +415,90 @@ export function GeneratorsClient({
 
   // ─── Handlers ───
   const openSheet = useCallback((type: "proposal" | "invoice" | "agreement") => {
+    setEditingId(null);
+    setEditingType(null);
     setSheetType(type);
     setErrorMsg("");
     setSuccessMsg("");
+    resetForms();
     setSheetOpen(true);
   }, []);
+
+  const openEditSheet = async (item: ProposalItem | InvoiceItem | AgreementItem, type: "proposal" | "invoice" | "agreement") => {
+    setEditingId(item.id);
+    setEditingType(type);
+    setSheetType(type);
+    setErrorMsg("");
+    setSuccessMsg("");
+
+    if (item.clientId) {
+      setRecipientVal(`client:${item.clientId}`);
+      setRecipientType("client");
+      setRecipientId(item.clientId);
+    }
+
+    setSheetOpen(true);
+    setIsLoadingDetails(true);
+
+    const res = await getGeneratorItemDetails(item.id, type);
+    setIsLoadingDetails(false);
+
+    if (res.success && res.data) {
+      const d = res.data;
+      if (type === "proposal") {
+        setPropTitle(d.title || "");
+        setPropProjectId(d.projectId || "");
+        setPropValidUntil(d.validUntil || "");
+        if (d.content) {
+          setPropSummary(d.content.executiveSummary || "");
+          setPropScope(d.content.scope || "");
+          setPropDeliverables(Array.isArray(d.content.deliverables) ? d.content.deliverables.join("\n") : (d.content.deliverables || ""));
+          setPropTimeline(d.content.timeline || "");
+          setPropTerms(d.content.termsAndConditions || DEFAULT_TERMS);
+          if (Array.isArray(d.content.pricingItems) && d.content.pricingItems.length > 0) {
+            setPropPricingItems(d.content.pricingItems);
+          }
+        }
+      } else if (type === "invoice") {
+        setInvProjectId(d.projectId || "");
+        setInvDueDate(d.dueDate || "");
+        setInvNotes(d.notes || "");
+        if (d.taxRate && d.taxRate > 0) {
+          setInvGstEnabled(true);
+          setInvGstRate(d.taxRate);
+        } else {
+          setInvGstEnabled(false);
+        }
+        if (Array.isArray(d.items) && d.items.length > 0) {
+          setInvLineItems(d.items);
+        }
+      } else if (type === "agreement") {
+        setAgrTitle(d.title || "");
+        setAgrProjectId(d.projectId || "");
+        setAgrEffectiveDate(d.effectiveDate || new Date().toISOString().split("T")[0]);
+        setAgrExpiresAt(d.expiresAt || "");
+        if (d.content) {
+          setAgrType(d.content.templateType || "MASTER");
+          if (d.content.projectOverview) setSowProjectOverview(d.content.projectOverview);
+          if (Array.isArray(d.content.deliverables) && d.content.deliverables.length > 0) {
+            setSowDeliverables(d.content.deliverables);
+          }
+          if (Array.isArray(d.content.outOfScopeItems)) {
+            setSowOutOfScope(d.content.outOfScopeItems.join("\n"));
+          }
+          if (Array.isArray(d.content.techStack)) {
+            setSowTechStack(d.content.techStack.join(", "));
+          }
+          if (Array.isArray(d.content.milestones) && d.content.milestones.length > 0) {
+            setSowMilestones(d.content.milestones);
+          }
+          if (d.content.advanceAmount) {
+            setSowAdvanceAmount(Number(d.content.advanceAmount));
+          }
+        }
+      }
+    }
+  };
 
   const resetForms = () => {
     setRecipientVal(""); setRecipientType("client"); setRecipientId("");
@@ -463,37 +550,73 @@ export function GeneratorsClient({
     }
     setErrorMsg("");
     startTransition(async () => {
-      const result = await createProposal({
-        title: propTitle,
-        clientId: recipientType === "client" ? recipientId : undefined,
-        leadId: recipientType === "lead" ? recipientId : undefined,
-        projectId: propProjectId || undefined,
-        executiveSummary: propSummary, scope: propScope,
-        deliverables: propDeliverables.split("\n").filter(Boolean),
-        timeline: propTimeline, pricingItems: propPricingItems,
-        totalAmount: propTotal, termsAndConditions: propTerms, validUntil: propValidUntil,
-      });
-      if (result.success && result.data) {
-        const clientName = recipientType === "client"
-          ? (clients.find(c => c.id === recipientId)?.name || "")
-          : (leads.find(l => l.id === recipientId)?.displayName || "");
-        const project = projects.find(p => p.id === propProjectId);
-        setProposals(prev => [{
-          id: result.data!.id, number: result.data!.number, title: propTitle,
-          clientId: recipientId, clientName,
-          projectId: propProjectId || null, projectName: project?.name || null,
-          amount: propTotal, status: "DRAFT", validUntil: propValidUntil,
-          pdfKey: result.data!.pdfKey, createdAt: new Date().toISOString(),
-        }, ...prev]);
-        setActiveTab("proposals");
-        setSuccessMsg(`Proposal ${result.data.number} created successfully!`);
-        toast.success("Proposal PDF Generated", `${result.data.number} saved & linked to ${clientName}.`);
-        resetForms();
-        setTimeout(() => { setSheetOpen(false); setSuccessMsg(""); }, 1400);
+      if (editingId) {
+        const result = await updateProposal(editingId, {
+          title: propTitle,
+          clientId: recipientType === "client" ? recipientId : undefined,
+          leadId: recipientType === "lead" ? recipientId : undefined,
+          projectId: propProjectId || undefined,
+          executiveSummary: propSummary, scope: propScope,
+          deliverables: propDeliverables.split("\n").filter(Boolean),
+          timeline: propTimeline, pricingItems: propPricingItems,
+          totalAmount: propTotal, termsAndConditions: propTerms, validUntil: propValidUntil,
+        });
+        if (result.success && result.data) {
+          setProposals(prev => prev.map(p => p.id === editingId ? {
+            ...p,
+            title: result.data!.title,
+            clientId: result.data!.clientId,
+            clientName: result.data!.clientName,
+            projectId: result.data!.projectId,
+            projectName: result.data!.projectName,
+            amount: result.data!.amount,
+            validUntil: result.data!.validUntil,
+            pdfKey: result.data!.pdfKey,
+          } : p));
+          setActiveTab("proposals");
+          setSuccessMsg(`Proposal ${result.data.number} updated successfully!`);
+          toast.success("Proposal Updated", `${result.data.number} PDF regenerated & saved.`);
+          resetForms();
+          setEditingId(null); setEditingType(null);
+          setTimeout(() => { setSheetOpen(false); setSuccessMsg(""); }, 1400);
+        } else {
+          const err = result.error || "Failed to update proposal";
+          setErrorMsg(err);
+          toast.error("Update Failed", err);
+        }
       } else {
-        const err = result.error || "Failed to create proposal";
-        setErrorMsg(err);
-        toast.error("Generation Failed", err);
+        const result = await createProposal({
+          title: propTitle,
+          clientId: recipientType === "client" ? recipientId : undefined,
+          leadId: recipientType === "lead" ? recipientId : undefined,
+          projectId: propProjectId || undefined,
+          executiveSummary: propSummary, scope: propScope,
+          deliverables: propDeliverables.split("\n").filter(Boolean),
+          timeline: propTimeline, pricingItems: propPricingItems,
+          totalAmount: propTotal, termsAndConditions: propTerms, validUntil: propValidUntil,
+        });
+        if (result.success && result.data) {
+          const clientName = recipientType === "client"
+            ? (clients.find(c => c.id === recipientId)?.name || "")
+            : (leads.find(l => l.id === recipientId)?.displayName || "");
+          const project = projects.find(p => p.id === propProjectId);
+          setProposals(prev => [{
+            id: result.data!.id, number: result.data!.number, title: propTitle,
+            clientId: recipientId, clientName,
+            projectId: propProjectId || null, projectName: project?.name || null,
+            amount: propTotal, status: "DRAFT", validUntil: propValidUntil,
+            pdfKey: result.data!.pdfKey, createdAt: new Date().toISOString(),
+          }, ...prev]);
+          setActiveTab("proposals");
+          setSuccessMsg(`Proposal ${result.data.number} created successfully!`);
+          toast.success("Proposal PDF Generated", `${result.data.number} saved & linked to ${clientName}.`);
+          resetForms();
+          setTimeout(() => { setSheetOpen(false); setSuccessMsg(""); }, 1400);
+        } else {
+          const err = result.error || "Failed to create proposal";
+          setErrorMsg(err);
+          toast.error("Generation Failed", err);
+        }
       }
     });
   };
@@ -511,37 +634,74 @@ export function GeneratorsClient({
     }
     setErrorMsg("");
     startTransition(async () => {
-      const result = await createInvoice({
-        clientId: recipientType === "client" ? recipientId : undefined,
-        leadId: recipientType === "lead" ? recipientId : undefined,
-        projectId: invProjectId || undefined,
-        lineItems: invLineItems, subtotal: invSubtotal,
-        taxRate: invGstEnabled ? invGstRate : 0, taxAmount: invTaxAmount,
-        total: invTotal, dueDate: invDueDate, notes: invNotes || undefined,
-      });
-      if (result.success && result.data) {
-        const clientName = recipientType === "client"
-          ? (clients.find(c => c.id === recipientId)?.name || "")
-          : (leads.find(l => l.id === recipientId)?.displayName || "");
-        const project = projects.find(p => p.id === invProjectId);
-        setInvoices(prev => [{
-          id: result.data!.id, number: result.data!.number,
-          clientId: recipientId, clientName,
-          projectId: invProjectId || null, projectName: project?.name || null,
-          subtotal: invSubtotal, taxRate: invGstEnabled ? invGstRate : 0,
-          taxAmount: invTaxAmount, total: invTotal, status: "DRAFT",
-          issueDate: new Date().toISOString(), dueDate: invDueDate,
-          notes: invNotes || null, pdfKey: result.data!.pdfKey, createdAt: new Date().toISOString(),
-        }, ...prev]);
-        setActiveTab("invoices");
-        setSuccessMsg(`Invoice ${result.data.number} created successfully!`);
-        toast.success("Invoice PDF Generated", `${result.data.number} saved & linked to ${clientName}.`);
-        resetForms();
-        setTimeout(() => { setSheetOpen(false); setSuccessMsg(""); }, 1400);
+      if (editingId) {
+        const result = await updateInvoice(editingId, {
+          clientId: recipientType === "client" ? recipientId : undefined,
+          leadId: recipientType === "lead" ? recipientId : undefined,
+          projectId: invProjectId || undefined,
+          lineItems: invLineItems, subtotal: invSubtotal,
+          taxRate: invGstEnabled ? invGstRate : 0, taxAmount: invTaxAmount,
+          total: invTotal, dueDate: invDueDate, notes: invNotes || undefined,
+        });
+        if (result.success && result.data) {
+          setInvoices(prev => prev.map(i => i.id === editingId ? {
+            ...i,
+            clientId: result.data!.clientId,
+            clientName: result.data!.clientName,
+            projectId: result.data!.projectId,
+            projectName: result.data!.projectName,
+            subtotal: result.data!.subtotal,
+            taxRate: result.data!.taxRate,
+            taxAmount: result.data!.taxAmount,
+            total: result.data!.total,
+            dueDate: result.data!.dueDate,
+            notes: result.data!.notes,
+            pdfKey: result.data!.pdfKey,
+          } : i));
+          setActiveTab("invoices");
+          setSuccessMsg(`Invoice ${result.data.number} updated successfully!`);
+          toast.success("Invoice Updated", `${result.data.number} PDF regenerated & saved.`);
+          resetForms();
+          setEditingId(null); setEditingType(null);
+          setTimeout(() => { setSheetOpen(false); setSuccessMsg(""); }, 1400);
+        } else {
+          const err = result.error || "Failed to update invoice";
+          setErrorMsg(err);
+          toast.error("Update Failed", err);
+        }
       } else {
-        const err = result.error || "Failed to create invoice";
-        setErrorMsg(err);
-        toast.error("Generation Failed", err);
+        const result = await createInvoice({
+          clientId: recipientType === "client" ? recipientId : undefined,
+          leadId: recipientType === "lead" ? recipientId : undefined,
+          projectId: invProjectId || undefined,
+          lineItems: invLineItems, subtotal: invSubtotal,
+          taxRate: invGstEnabled ? invGstRate : 0, taxAmount: invTaxAmount,
+          total: invTotal, dueDate: invDueDate, notes: invNotes || undefined,
+        });
+        if (result.success && result.data) {
+          const clientName = recipientType === "client"
+            ? (clients.find(c => c.id === recipientId)?.name || "")
+            : (leads.find(l => l.id === recipientId)?.displayName || "");
+          const project = projects.find(p => p.id === invProjectId);
+          setInvoices(prev => [{
+            id: result.data!.id, number: result.data!.number,
+            clientId: recipientId, clientName,
+            projectId: invProjectId || null, projectName: project?.name || null,
+            subtotal: invSubtotal, taxRate: invGstEnabled ? invGstRate : 0,
+            taxAmount: invTaxAmount, total: invTotal, status: "DRAFT",
+            issueDate: new Date().toISOString(), dueDate: invDueDate,
+            notes: invNotes || null, pdfKey: result.data!.pdfKey, createdAt: new Date().toISOString(),
+          }, ...prev]);
+          setActiveTab("invoices");
+          setSuccessMsg(`Invoice ${result.data.number} created successfully!`);
+          toast.success("Invoice PDF Generated", `${result.data.number} saved & linked to ${clientName}.`);
+          resetForms();
+          setTimeout(() => { setSheetOpen(false); setSuccessMsg(""); }, 1400);
+        } else {
+          const err = result.error || "Failed to create invoice";
+          setErrorMsg(err);
+          toast.error("Generation Failed", err);
+        }
       }
     });
   };
@@ -575,30 +735,58 @@ export function GeneratorsClient({
         payload.advanceAmount = Number(sowAdvanceAmount) || 0;
       }
 
-      const result = await createAgreement(payload);
-      if (result.success && result.data) {
-        const clientName = recipientType === "client"
-          ? (clients.find(c => c.id === recipientId)?.name || "")
-          : (leads.find(l => l.id === recipientId)?.displayName || "");
-        const project = projects.find(p => p.id === agrProjectId);
-        setAgreements(prev => [{
-          id: result.data!.id, number: result.data!.number, title: payload.title,
-          clientId: recipientId, clientName,
-          projectId: agrProjectId || null, projectName: project?.name || null,
-          status: "DRAFT", effectiveDate: agrEffectiveDate,
-          expiresAt: agrExpiresAt || null,
-          pdfKey: result.data!.pdfKey, createdAt: new Date().toISOString(),
-        }, ...prev]);
-        setActiveTab("agreements");
-        const typeLabel = agrType === "COMPLETION" ? "Handover Certificate" : agrType === "SOW" ? "Statement of Work" : "Master Agreement";
-        setSuccessMsg(`${typeLabel} ${result.data.number} created successfully!`);
-        toast.success(`${typeLabel} Rendered`, `${result.data.number} saved & linked to ${clientName}.`);
-        resetForms();
-        setTimeout(() => { setSheetOpen(false); setSuccessMsg(""); }, 1400);
+      if (editingId) {
+        const result = await updateAgreement(editingId, payload);
+        if (result.success && result.data) {
+          setAgreements(prev => prev.map(a => a.id === editingId ? {
+            ...a,
+            title: result.data!.title,
+            clientId: result.data!.clientId,
+            clientName: result.data!.clientName,
+            projectId: result.data!.projectId,
+            projectName: result.data!.projectName,
+            effectiveDate: result.data!.effectiveDate,
+            expiresAt: result.data!.expiresAt,
+            pdfKey: result.data!.pdfKey,
+          } : a));
+          setActiveTab("agreements");
+          const typeLabel = agrType === "COMPLETION" ? "Handover Certificate" : agrType === "SOW" ? "Statement of Work" : "Master Agreement";
+          setSuccessMsg(`${typeLabel} ${result.data.number} updated successfully!`);
+          toast.success(`${typeLabel} Updated`, `${result.data.number} PDF regenerated & saved.`);
+          resetForms();
+          setEditingId(null); setEditingType(null);
+          setTimeout(() => { setSheetOpen(false); setSuccessMsg(""); }, 1400);
+        } else {
+          const err = result.error || "Failed to update agreement";
+          setErrorMsg(err);
+          toast.error("Update Failed", err);
+        }
       } else {
-        const err = result.error || "Failed to create agreement";
-        setErrorMsg(err);
-        toast.error("Generation Failed", err);
+        const result = await createAgreement(payload);
+        if (result.success && result.data) {
+          const clientName = recipientType === "client"
+            ? (clients.find(c => c.id === recipientId)?.name || "")
+            : (leads.find(l => l.id === recipientId)?.displayName || "");
+          const project = projects.find(p => p.id === agrProjectId);
+          setAgreements(prev => [{
+            id: result.data!.id, number: result.data!.number, title: payload.title,
+            clientId: recipientId, clientName,
+            projectId: agrProjectId || null, projectName: project?.name || null,
+            status: "DRAFT", effectiveDate: agrEffectiveDate,
+            expiresAt: agrExpiresAt || null,
+            pdfKey: result.data!.pdfKey, createdAt: new Date().toISOString(),
+          }, ...prev]);
+          setActiveTab("agreements");
+          const typeLabel = agrType === "COMPLETION" ? "Handover Certificate" : agrType === "SOW" ? "Statement of Work" : "Master Agreement";
+          setSuccessMsg(`${typeLabel} ${result.data.number} created successfully!`);
+          toast.success(`${typeLabel} Rendered`, `${result.data.number} saved & linked to ${clientName}.`);
+          resetForms();
+          setTimeout(() => { setSheetOpen(false); setSuccessMsg(""); }, 1400);
+        } else {
+          const err = result.error || "Failed to create agreement";
+          setErrorMsg(err);
+          toast.error("Generation Failed", err);
+        }
       }
     });
   };
@@ -871,6 +1059,7 @@ export function GeneratorsClient({
                 subtitle={p.validUntil ? `Valid until ${fmtDate(p.validUntil)}` : undefined}
                 pdfKey={p.pdfKey}
                 onView={() => openPreview(`Proposal: ${p.title} (${p.number})`, p.pdfKey, p.id, "proposal")}
+                onEdit={() => openEditSheet(p, "proposal")}
                 onDelete={() => handleDelete(p.id, "proposal")}
               />
             ))
@@ -893,6 +1082,7 @@ export function GeneratorsClient({
                 subtitle={inv.dueDate ? `Due ${fmtDate(inv.dueDate)}` : undefined}
                 pdfKey={inv.pdfKey}
                 onView={() => openPreview(`Invoice: ${inv.number} — ${inv.clientName}`, inv.pdfKey, inv.id, "invoice")}
+                onEdit={() => openEditSheet(inv, "invoice")}
                 onDelete={() => handleDelete(inv.id, "invoice")}
               />
             ))
@@ -915,6 +1105,7 @@ export function GeneratorsClient({
                 subtitle={a.effectiveDate ? `Effective from ${fmtDate(a.effectiveDate)}` : undefined}
                 pdfKey={a.pdfKey}
                 onView={() => openPreview(`Document: ${a.number} — ${a.clientName}`, a.pdfKey, a.id, "agreement")}
+                onEdit={() => openEditSheet(a, "agreement")}
                 onDelete={() => handleDelete(a.id, "agreement")}
               />
             ))
@@ -951,7 +1142,7 @@ export function GeneratorsClient({
                     <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-600 text-white shadow-2xs">
                       <IconFileText className="h-4 w-4" />
                     </div>
-                    <span>New Proposal</span>
+                    <span>{editingId ? "Edit Proposal & Regenerate PDF" : "New Proposal"}</span>
                   </>
                 )}
                 {sheetType === "invoice" && (
@@ -959,7 +1150,7 @@ export function GeneratorsClient({
                     <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600 text-white shadow-2xs">
                       <IconFileInvoice className="h-4 w-4" />
                     </div>
-                    <span>New Tax Invoice</span>
+                    <span>{editingId ? "Edit Tax Invoice & Regenerate PDF" : "New Tax Invoice"}</span>
                   </>
                 )}
                 {sheetType === "agreement" && (
@@ -967,14 +1158,14 @@ export function GeneratorsClient({
                     <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-600 text-white shadow-2xs">
                       <IconFileDescription className="h-4 w-4" />
                     </div>
-                    <span>New Legal Document / PCC</span>
+                    <span>{editingId ? "Edit Legal Document / PCC & Regenerate PDF" : "New Legal Document / PCC"}</span>
                   </>
                 )}
               </SheetTitle>
               <SheetDescription className="text-[11px] text-text-secondary mt-0.5">
-                {sheetType === "proposal" && "Create a branded proposal with scope, deliverables, timeline & pricing."}
-                {sheetType === "invoice" && "Generate a tax invoice with line items, GST breakdown & due date."}
-                {sheetType === "agreement" && "Generate Master Services Agreement (MSA), Statement of Work (SOW), or Handover Certificate (PCC)."}
+                {sheetType === "proposal" && (editingId ? "Modify proposal scope, deliverables, timeline & pricing, then re-render PDF." : "Create a branded proposal with scope, deliverables, timeline & pricing.")}
+                {sheetType === "invoice" && (editingId ? "Modify invoice line items, GST breakdown & due date, then re-render PDF." : "Generate a tax invoice with line items, GST breakdown & due date.")}
+                {sheetType === "agreement" && (editingId ? "Modify contract scope, milestones & handover details, then re-render PDF." : "Generate Master Services Agreement (MSA), Statement of Work (SOW), or Handover Certificate (PCC).")}
               </SheetDescription>
             </SheetHeader>
           </div>
@@ -1058,7 +1249,7 @@ export function GeneratorsClient({
                   </Field>
                 </FormSection>
 
-                <SubmitButton label="Generate Proposal PDF" loading={isPending} error={errorMsg} success={successMsg} onClick={handleSubmitProposal} color="violet" />
+                <SubmitButton label={editingId ? "Update Proposal & Re-render PDF" : "Generate Proposal PDF"} loading={isPending} error={errorMsg} success={successMsg} onClick={handleSubmitProposal} color="violet" />
               </>
             )}
 
@@ -1150,7 +1341,7 @@ export function GeneratorsClient({
                   </Field>
                 </FormSection>
 
-                <SubmitButton label="Generate Tax Invoice PDF" loading={isPending} error={errorMsg} success={successMsg} onClick={handleSubmitInvoice} color="blue" />
+                <SubmitButton label={editingId ? "Update Tax Invoice & Re-render PDF" : "Generate Tax Invoice PDF"} loading={isPending} error={errorMsg} success={successMsg} onClick={handleSubmitInvoice} color="blue" />
               </>
             )}
 
@@ -1494,7 +1685,7 @@ export function GeneratorsClient({
                 )}
 
                 <SubmitButton
-                  label={agrType === "COMPLETION" ? "Generate Project Handover Certificate (PCC)" : agrType === "SOW" ? "Generate Statement of Work (SOW)" : "Generate Master Agreement (MSA)"}
+                  label={editingId ? "Update Agreement & Re-render PDF" : (agrType === "COMPLETION" ? "Generate Project Handover Certificate (PCC)" : agrType === "SOW" ? "Generate Statement of Work (SOW)" : "Generate Master Agreement (MSA)")}
                   loading={isPending}
                   error={errorMsg}
                   success={successMsg}
@@ -1898,11 +2089,11 @@ function SubmitButton({
 }
 
 function DocumentCard({
-  icon, iconBg, title, status, type, badge, meta, subtitle, pdfKey, onView, onDelete, onQuickStatusChange, index
+  icon, iconBg, title, status, type, badge, meta, subtitle, pdfKey, onView, onEdit, onDelete, onQuickStatusChange, index
 }: {
   icon: React.ReactNode; iconBg: string; title: string; status: string; type: "proposal" | "invoice" | "agreement";
   badge: React.ReactNode; meta: string[]; subtitle?: string; pdfKey: string | null;
-  onView: () => void; onDelete: () => void; onQuickStatusChange: (newStatus: string) => void; index: number;
+  onView: () => void; onEdit: () => void; onDelete: () => void; onQuickStatusChange: (newStatus: string) => void; index: number;
 }) {
   const downloadUrl = getFileUrl(pdfKey);
 
@@ -1962,6 +2153,15 @@ function DocumentCard({
             <span className="truncate">{quickAction.label}</span>
           </button>
         )}
+        <button
+          type="button"
+          onClick={onEdit}
+          className="flex items-center justify-center gap-1 px-2.5 py-1 rounded-lg bg-surface-page hover:bg-brand-orange-tint/40 text-text-primary hover:text-brand-orange border border-border-custom text-[11px] font-semibold transition-all touch-manipulation active:scale-95 cursor-pointer"
+          title="Edit details & re-render PDF"
+        >
+          <IconEdit className="h-3 w-3 text-brand-orange" />
+          <span>Edit</span>
+        </button>
         {pdfKey && (
           <button
             type="button"

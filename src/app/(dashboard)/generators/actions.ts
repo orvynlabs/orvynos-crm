@@ -842,3 +842,518 @@ export async function regenerateAgreementPdf(id: string) {
     return { success: false, error: err?.message || "Failed to regenerate PDF" };
   }
 }
+
+// ─────────────────────────────────────────────
+// Fetch Item Details for Editing
+// ─────────────────────────────────────────────
+
+export async function getGeneratorItemDetails(id: string, type: 'proposal' | 'invoice' | 'agreement'): Promise<{ success: boolean; data?: any; error?: string }> {
+  try {
+    return await withRetry(async () => {
+      if (type === 'proposal') {
+        const item = await prisma.proposal.findUnique({
+          where: { id },
+          include: { client: true, project: true },
+        });
+        if (!item) return { success: false, error: "Proposal not found" };
+        return {
+          success: true,
+          data: {
+            id: item.id,
+            number: item.number,
+            title: item.title,
+            clientId: item.clientId,
+            clientName: item.client.name,
+            projectId: item.projectId,
+            projectName: item.project?.name || null,
+            amount: item.amount ? Number(item.amount) : 0,
+            status: item.status,
+            validUntil: item.validUntil ? item.validUntil.toISOString().split("T")[0] : "",
+            content: item.content as any,
+            pdfKey: item.pdfKey,
+            createdAt: item.createdAt.toISOString(),
+          },
+        };
+      } else if (type === 'invoice') {
+        const item = await prisma.invoice.findUnique({
+          where: { id },
+          include: { client: true, project: true },
+        });
+        if (!item) return { success: false, error: "Invoice not found" };
+        return {
+          success: true,
+          data: {
+            id: item.id,
+            number: item.number,
+            clientId: item.clientId,
+            clientName: item.client.name,
+            projectId: item.projectId,
+            projectName: item.project?.name || null,
+            items: item.items as any,
+            subtotal: Number(item.subtotal),
+            taxRate: Number(item.taxRate),
+            taxAmount: Number(item.taxAmount),
+            total: Number(item.total),
+            status: item.status,
+            issueDate: item.issueDate.toISOString().split("T")[0],
+            dueDate: item.dueDate ? item.dueDate.toISOString().split("T")[0] : "",
+            notes: item.notes || "",
+            pdfKey: item.pdfKey,
+            createdAt: item.createdAt.toISOString(),
+          },
+        };
+      } else {
+        const item = await prisma.agreement.findUnique({
+          where: { id },
+          include: { client: true, project: true },
+        });
+        if (!item) return { success: false, error: "Agreement not found" };
+        return {
+          success: true,
+          data: {
+            id: item.id,
+            number: item.number,
+            title: item.title,
+            clientId: item.clientId,
+            clientName: item.client.name,
+            projectId: item.projectId,
+            projectName: item.project?.name || null,
+            status: item.status,
+            effectiveDate: item.effectiveDate ? item.effectiveDate.toISOString().split("T")[0] : "",
+            expiresAt: item.expiresAt ? item.expiresAt.toISOString().split("T")[0] : "",
+            content: item.content as any,
+            pdfKey: item.pdfKey,
+            createdAt: item.createdAt.toISOString(),
+          },
+        };
+      }
+    });
+  } catch (error: any) {
+    console.error(`Failed to fetch ${type} details:`, error);
+    return { success: false, error: error?.message || `Failed to fetch ${type} details` };
+  }
+}
+
+// ─────────────────────────────────────────────
+// Update Proposal
+// ─────────────────────────────────────────────
+
+export async function updateProposal(id: string, data: {
+  title: string;
+  clientId?: string;
+  leadId?: string;
+  projectId?: string;
+  executiveSummary: string;
+  scope: string;
+  deliverables: string[];
+  timeline: string;
+  pricingItems: PricingItem[];
+  totalAmount: number;
+  termsAndConditions: string;
+  validUntil: string;
+}) {
+  try {
+    const existing = await prisma.proposal.findUnique({ where: { id } });
+    if (!existing) return { success: false, error: "Proposal not found" };
+
+    let sessionUserId: string | undefined;
+    try {
+      const session = await auth();
+      sessionUserId = session?.user?.id;
+    } catch {}
+
+    const targetClientId = await resolveClientId({
+      clientId: data.clientId,
+      leadId: data.leadId,
+      sessionUserId,
+    });
+
+    const client = await withRetry(() => prisma.client.findUnique({
+      where: { id: targetClientId },
+      select: { name: true, contactName: true, email: true, phone: true, gstin: true, address: true, city: true, state: true },
+    }));
+    if (!client) throw new Error("Client record not found");
+
+    const project = data.projectId
+      ? await withRetry(() => prisma.project.findUnique({ where: { id: data.projectId }, select: { name: true } }))
+      : null;
+
+    const dateStr = existing.createdAt.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    const templateProps: ProposalTemplateProps = {
+      proposalNumber: existing.number,
+      title: data.title,
+      date: dateStr,
+      validUntil: new Date(data.validUntil).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }),
+      status: existing.status as any,
+      clientName: client.name,
+      clientContactName: client.contactName || undefined,
+      clientEmail: client.email || undefined,
+      clientPhone: client.phone || undefined,
+      clientGstin: client.gstin || undefined,
+      clientAddress: [client.address, client.city, client.state].filter(Boolean).join(', ') || undefined,
+      projectName: project?.name,
+      executiveSummary: data.executiveSummary,
+      scope: data.scope,
+      deliverables: data.deliverables,
+      timeline: data.timeline,
+      pricingItems: data.pricingItems,
+      totalAmount: data.totalAmount,
+      termsAndConditions: data.termsAndConditions,
+    };
+
+    const html = renderProposalHtml(templateProps);
+
+    const content = {
+      executiveSummary: data.executiveSummary,
+      scope: data.scope,
+      deliverables: data.deliverables,
+      timeline: data.timeline,
+      pricingItems: data.pricingItems,
+      termsAndConditions: data.termsAndConditions,
+    };
+
+    const { storageKey, documentId } = await generateAndSaveDocument({
+      html,
+      storagePrefix: 'proposals',
+      fileBaseName: `proposal-${existing.number.toLowerCase()}-${Date.now()}`,
+      documentType: 'PROPOSAL',
+      documentName: `Proposal ${existing.number} — ${data.title}`,
+      clientId: targetClientId,
+      projectId: data.projectId,
+      userId: sessionUserId || undefined,
+    });
+
+    const updated = await withRetry(() => prisma.proposal.update({
+      where: { id },
+      data: {
+        title: data.title,
+        clientId: targetClientId,
+        projectId: data.projectId || null,
+        content: content as any,
+        amount: data.totalAmount,
+        validUntil: new Date(data.validUntil),
+        pdfKey: storageKey,
+      },
+      include: { client: { select: { name: true } }, project: { select: { name: true } } },
+    }));
+
+    try {
+      revalidatePath("/generators");
+      revalidatePath("/documents");
+      revalidatePath("/leads");
+    } catch {}
+    return {
+      success: true,
+      data: {
+        id: updated.id,
+        number: updated.number,
+        title: updated.title,
+        clientId: updated.clientId,
+        clientName: updated.client.name,
+        projectId: updated.projectId,
+        projectName: updated.project?.name || null,
+        amount: updated.amount ? Number(updated.amount) : null,
+        status: updated.status,
+        validUntil: updated.validUntil ? updated.validUntil.toISOString() : null,
+        pdfKey: storageKey,
+        createdAt: updated.createdAt.toISOString(),
+      },
+    };
+  } catch (error: any) {
+    console.error("Failed to update proposal:", error);
+    return { success: false, error: error?.message || "Failed to update proposal" };
+  }
+}
+
+// ─────────────────────────────────────────────
+// Update Invoice
+// ─────────────────────────────────────────────
+
+export async function updateInvoice(id: string, data: {
+  clientId?: string;
+  leadId?: string;
+  projectId?: string;
+  lineItems: InvoiceLineItem[];
+  subtotal: number;
+  taxRate: number;
+  taxAmount: number;
+  total: number;
+  dueDate: string;
+  notes?: string;
+}) {
+  try {
+    const existing = await prisma.invoice.findUnique({ where: { id } });
+    if (!existing) return { success: false, error: "Invoice not found" };
+
+    let sessionUserId: string | undefined;
+    try {
+      const session = await auth();
+      sessionUserId = session?.user?.id;
+    } catch {}
+
+    const targetClientId = await resolveClientId({
+      clientId: data.clientId,
+      leadId: data.leadId,
+      sessionUserId,
+    });
+
+    const client = await withRetry(() => prisma.client.findUnique({
+      where: { id: targetClientId },
+      select: { name: true, contactName: true, email: true, phone: true, gstin: true, address: true, city: true, state: true },
+    }));
+    if (!client) throw new Error("Client record not found");
+
+    const project = data.projectId
+      ? await withRetry(() => prisma.project.findUnique({ where: { id: data.projectId }, select: { name: true } }))
+      : null;
+
+    const issueDateStr = existing.issueDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+    const dueDateStr = new Date(data.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    const templateProps: InvoiceTemplateProps = {
+      invoiceNumber: existing.number,
+      issueDate: issueDateStr,
+      dueDate: dueDateStr,
+      status: existing.status as any,
+      clientName: client.name,
+      clientContactName: client.contactName || undefined,
+      clientEmail: client.email || undefined,
+      clientPhone: client.phone || undefined,
+      clientGstin: client.gstin || undefined,
+      clientAddress: [client.address, client.city, client.state].filter(Boolean).join(', ') || undefined,
+      projectName: project?.name,
+      lineItems: data.lineItems,
+      subtotal: data.subtotal,
+      taxRate: data.taxRate,
+      taxAmount: data.taxAmount,
+      total: data.total,
+      notes: data.notes,
+    };
+
+    const html = renderInvoiceHtml(templateProps);
+
+    const { storageKey, documentId } = await generateAndSaveDocument({
+      html,
+      storagePrefix: 'invoices',
+      fileBaseName: `invoice-${existing.number.toLowerCase()}-${Date.now()}`,
+      documentType: 'INVOICE',
+      documentName: `Invoice ${existing.number} — ${client.name}`,
+      clientId: targetClientId,
+      projectId: data.projectId,
+      userId: sessionUserId || undefined,
+    });
+
+    const updated = await withRetry(() => prisma.invoice.update({
+      where: { id },
+      data: {
+        clientId: targetClientId,
+        projectId: data.projectId || null,
+        items: data.lineItems as any,
+        subtotal: data.subtotal,
+        taxRate: data.taxRate,
+        taxAmount: data.taxAmount,
+        total: data.total,
+        dueDate: new Date(data.dueDate),
+        notes: data.notes || null,
+        pdfKey: storageKey,
+      },
+      include: { client: { select: { name: true } }, project: { select: { name: true } } },
+    }));
+
+    try {
+      revalidatePath("/generators");
+      revalidatePath("/documents");
+      revalidatePath("/leads");
+    } catch {}
+    return {
+      success: true,
+      data: {
+        id: updated.id,
+        number: updated.number,
+        clientId: updated.clientId,
+        clientName: updated.client.name,
+        projectId: updated.projectId,
+        projectName: updated.project?.name || null,
+        subtotal: Number(updated.subtotal),
+        taxRate: Number(updated.taxRate),
+        taxAmount: Number(updated.taxAmount),
+        total: Number(updated.total),
+        status: updated.status,
+        issueDate: updated.issueDate.toISOString(),
+        dueDate: updated.dueDate ? updated.dueDate.toISOString() : null,
+        notes: updated.notes,
+        pdfKey: storageKey,
+        createdAt: updated.createdAt.toISOString(),
+      },
+    };
+  } catch (error: any) {
+    console.error("Failed to update invoice:", error);
+    return { success: false, error: error?.message || "Failed to update invoice" };
+  }
+}
+
+// ─────────────────────────────────────────────
+// Update Agreement
+// ─────────────────────────────────────────────
+
+export async function updateAgreement(id: string, data: {
+  title?: string;
+  templateType?: string;
+  clientId?: string;
+  leadId?: string;
+  projectId?: string;
+  effectiveDate: string;
+  expiresAt?: string;
+  customClauses?: AgreementClause[];
+  projectOverview?: string;
+  deliverables?: { deliverable: string; description: string; status?: string }[];
+  outOfScopeItems?: string[];
+  techStack?: string[];
+  milestones?: { milestone: string; workDescription: string; dueDate: string; paymentAmount: number }[];
+  totalFee?: number;
+  advanceAmount?: number;
+}) {
+  try {
+    const existing = await prisma.agreement.findUnique({ where: { id } });
+    if (!existing) return { success: false, error: "Agreement not found" };
+
+    let sessionUserId: string | undefined;
+    try {
+      const session = await auth();
+      sessionUserId = session?.user?.id;
+    } catch {}
+
+    const targetClientId = await resolveClientId({
+      clientId: data.clientId,
+      leadId: data.leadId,
+      sessionUserId,
+    });
+
+    const client = await withRetry(() => prisma.client.findUnique({
+      where: { id: targetClientId },
+      select: { name: true, contactName: true, email: true, phone: true, address: true, city: true, state: true },
+    }));
+    if (!client) throw new Error("Client record not found");
+
+    const project = data.projectId
+      ? await withRetry(() => prisma.project.findUnique({ where: { id: data.projectId }, select: { name: true } }))
+      : null;
+
+    const effectiveDateStr = new Date(data.effectiveDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+    const expiresAtStr = data.expiresAt
+      ? new Date(data.expiresAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
+      : undefined;
+
+    const existingContent = (existing.content as any) || {};
+    const templateType = data.templateType || existingContent.templateType || 'MASTER';
+    let clauses: AgreementClause[] = data.customClauses || existingContent.clauses || [];
+
+    const vars: Record<string, string> = {
+      client_name: client.name,
+      company_name: 'Orvyn Labs Partnership',
+      project_name: project?.name || 'Agreed Digital Services',
+      effective_date: effectiveDateStr,
+      expires_at: expiresAtStr || 'N/A',
+    };
+    clauses = clauses.map((c: AgreementClause) => ({
+      title: c.title,
+      content: substituteVariables(c.content, vars),
+    }));
+
+    const title = data.title || existing.title || (
+      templateType === 'COMPLETION' ? 'Project Completion & Handover Certificate (PCC)' :
+      templateType === 'SOW' ? 'Statement of Work (SOW)' :
+      'Master Service & Confidentiality Agreement'
+    );
+
+    const templateProps: AgreementTemplateProps = {
+      agreementNumber: existing.number,
+      title: title,
+      templateType: templateType,
+      effectiveDate: effectiveDateStr,
+      expiresAt: expiresAtStr,
+      status: existing.status as any,
+      clientName: client.name,
+      clientContactName: client.contactName || undefined,
+      clientEmail: client.email || undefined,
+      clientPhone: client.phone || undefined,
+      clientAddress: [client.address, client.city, client.state].filter(Boolean).join(', ') || undefined,
+      projectName: project?.name,
+      projectOverview: data.projectOverview,
+      deliverables: data.deliverables,
+      outOfScopeItems: data.outOfScopeItems,
+      techStack: data.techStack,
+      milestones: data.milestones,
+      totalFee: data.totalFee,
+      advanceAmount: data.advanceAmount,
+      clauses,
+    };
+
+    const html = renderAgreementHtml(templateProps);
+    const docTypeLabel = templateType === 'COMPLETION' ? 'Handover Certificate' : templateType === 'SOW' ? 'Statement of Work' : 'Master Agreement';
+
+    const { storageKey, documentId } = await generateAndSaveDocument({
+      html,
+      storagePrefix: 'agreements',
+      fileBaseName: `agreement-${existing.number.toLowerCase()}-${Date.now()}`,
+      documentType: 'AGREEMENT',
+      documentName: `${docTypeLabel} ${existing.number} — ${client.name}`,
+      clientId: targetClientId,
+      projectId: data.projectId,
+      userId: sessionUserId || undefined,
+    });
+
+    const content = {
+      templateType: templateType,
+      clauses,
+      projectOverview: data.projectOverview,
+      deliverables: data.deliverables,
+      outOfScopeItems: data.outOfScopeItems,
+      techStack: data.techStack,
+      milestones: data.milestones,
+      totalFee: data.totalFee,
+      advanceAmount: data.advanceAmount,
+    };
+
+    const updated = await withRetry(() => prisma.agreement.update({
+      where: { id },
+      data: {
+        title: title,
+        clientId: targetClientId,
+        projectId: data.projectId || null,
+        content: content as any,
+        effectiveDate: new Date(data.effectiveDate),
+        expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
+        pdfKey: storageKey,
+      },
+      include: { client: { select: { name: true } }, project: { select: { name: true } } },
+    }));
+
+    try {
+      revalidatePath("/generators");
+      revalidatePath("/documents");
+      revalidatePath("/leads");
+    } catch {}
+    return {
+      success: true,
+      data: {
+        id: updated.id,
+        number: updated.number,
+        title: updated.title,
+        clientId: updated.clientId,
+        clientName: updated.client.name,
+        projectId: updated.projectId,
+        projectName: updated.project?.name || null,
+        status: updated.status,
+        effectiveDate: updated.effectiveDate ? updated.effectiveDate.toISOString() : null,
+        expiresAt: updated.expiresAt ? updated.expiresAt.toISOString() : null,
+        pdfKey: storageKey,
+        createdAt: updated.createdAt.toISOString(),
+      },
+    };
+  } catch (error: any) {
+    console.error("Failed to update agreement:", error);
+    return { success: false, error: error?.message || "Failed to update agreement" };
+  }
+}
