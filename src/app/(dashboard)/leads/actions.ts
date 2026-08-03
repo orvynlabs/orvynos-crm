@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/db";
 import { revalidatePath, unstable_cache } from "next/cache";
 import { LeadStage } from "@/lib/enums";
+import { auth } from "@/auth";
 
 export type CreateLeadInput = {
   name: string;
@@ -14,6 +15,8 @@ export type CreateLeadInput = {
   estimatedValue?: number;
   notes?: string;
   followUpAt?: string;
+  assignedToId?: string;
+  createdById?: string;
 };
 
 export type UpdateLeadInput = Partial<CreateLeadInput> & {
@@ -34,6 +37,12 @@ export async function getLeads() {
             convertedClient: {
               select: { id: true, name: true },
             },
+            assignedTo: {
+              select: { id: true, name: true, email: true, image: true },
+            },
+            createdBy: {
+              select: { id: true, name: true, email: true, image: true },
+            },
           },
         });
 
@@ -51,6 +60,10 @@ export async function getLeads() {
             estimatedValue: l.estimatedValue ? Number(l.estimatedValue) : 0,
             notes: l.notes,
             followUpAt: l.followUpAt ? l.followUpAt.toISOString() : null,
+            assignedToId: l.assignedToId,
+            assignedTo: l.assignedTo ? { id: l.assignedTo.id, name: l.assignedTo.name, email: l.assignedTo.email, image: l.assignedTo.image } : null,
+            createdById: l.createdById,
+            createdBy: l.createdBy ? { id: l.createdBy.id, name: l.createdBy.name, email: l.createdBy.email, image: l.createdBy.image } : null,
             convertedClientId: l.convertedClientId,
             convertedClient: l.convertedClient ? { id: l.convertedClient.id, name: l.convertedClient.name } : null,
             createdAt: l.createdAt.toISOString(),
@@ -62,9 +75,28 @@ export async function getLeads() {
         return { success: false, error: error?.message || "Failed to fetch leads", data: [] };
       }
     },
-    ["leads-data-v1"],
+    ["leads-data-v2"],
     { revalidate: 30, tags: ["leads"] }
   )();
+}
+
+export async function getLeadAssignees() {
+  try {
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        image: true,
+        role: true,
+      },
+      orderBy: { name: "asc" },
+    });
+    return { success: true, data: users };
+  } catch (error: any) {
+    console.error("Failed to fetch lead assignees:", error);
+    return { success: false, error: error?.message || "Failed to fetch assignees", data: [] };
+  }
 }
 
 export async function createLead(input: CreateLeadInput) {
@@ -72,6 +104,9 @@ export async function createLead(input: CreateLeadInput) {
     if (!input.name || !input.name.trim()) {
       return { success: false, error: "Lead contact name is required" };
     }
+
+    const session = await auth();
+    const currentUserId = session?.user?.id;
 
     const newLead = await prisma.lead.create({
       data: {
@@ -84,6 +119,16 @@ export async function createLead(input: CreateLeadInput) {
         estimatedValue: input.estimatedValue ? input.estimatedValue : null,
         notes: input.notes?.trim() || null,
         followUpAt: input.followUpAt ? new Date(input.followUpAt) : null,
+        assignedToId: input.assignedToId || null,
+        createdById: input.createdById || currentUserId || null,
+      },
+      include: {
+        assignedTo: {
+          select: { id: true, name: true, email: true, image: true },
+        },
+        createdBy: {
+          select: { id: true, name: true, email: true, image: true },
+        },
       },
     });
 
@@ -110,11 +155,21 @@ export async function updateLead(id: string, input: UpdateLeadInput) {
     if (input.followUpAt !== undefined) {
       dataToUpdate.followUpAt = input.followUpAt ? new Date(input.followUpAt) : null;
     }
+    if (input.assignedToId !== undefined) dataToUpdate.assignedToId = input.assignedToId || null;
+    if (input.createdById !== undefined) dataToUpdate.createdById = input.createdById || null;
     if (input.sortOrder !== undefined) dataToUpdate.sortOrder = input.sortOrder;
 
     const updated = await prisma.lead.update({
       where: { id },
       data: dataToUpdate,
+      include: {
+        assignedTo: {
+          select: { id: true, name: true, email: true, image: true },
+        },
+        createdBy: {
+          select: { id: true, name: true, email: true, image: true },
+        },
+      },
     });
 
     revalidatePath("/leads");

@@ -27,6 +27,7 @@ import {
   IconFileText,
   IconRefresh,
   IconCircleCheck,
+  IconClock,
 } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -53,14 +54,28 @@ export type LeadItem = {
   estimatedValue: number;
   notes: string | null;
   followUpAt: string | null;
+  assignedToId?: string | null;
+  assignedTo?: { id: string; name: string; email?: string | null; image?: string | null } | null;
+  createdById?: string | null;
+  createdBy?: { id: string; name: string; email?: string | null; image?: string | null } | null;
   convertedClientId: string | null;
   convertedClient: { id: string; name: string } | null;
   createdAt: string;
   updatedAt: string;
 };
 
+export type AssigneeUser = {
+  id: string;
+  name: string;
+  email: string;
+  image?: string | null;
+  role?: string;
+};
+
 type LeadsClientProps = {
   initialLeads: LeadItem[];
+  assignees?: AssigneeUser[];
+  currentUser?: { id: string; name: string; email: string };
 };
 
 const KANBAN_COLUMNS: { id: LeadStage; label: string; badgeColor: string; headerBg: string; borderColor: string }[] = [
@@ -81,7 +96,24 @@ const formatCurrency = (amount: number) => {
   }).format(amount);
 };
 
-export function LeadsClient({ initialLeads }: LeadsClientProps) {
+const formatLeadDateTime = (dateStr: string) => {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return "";
+  const dateFormatted = d.toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+  const timeFormatted = d.toLocaleTimeString("en-IN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+  return `${dateFormatted}, ${timeFormatted}`;
+};
+
+export function LeadsClient({ initialLeads, assignees = [], currentUser }: LeadsClientProps) {
   const router = useRouter();
   const [leads, setLeads] = useState<LeadItem[]>(initialLeads);
   const [searchQuery, setSearchQuery] = useState("");
@@ -114,6 +146,8 @@ export function LeadsClient({ initialLeads }: LeadsClientProps) {
   const [formStage, setFormStage] = useState<LeadStage>(LeadStage.NEW);
   const [formFollowUp, setFormFollowUp] = useState("");
   const [formNotes, setFormNotes] = useState("");
+  const [formAssignedTo, setFormAssignedTo] = useState("");
+  const [formCreatedBy, setFormCreatedBy] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
 
   // Conversion loading state
@@ -147,6 +181,8 @@ export function LeadsClient({ initialLeads }: LeadsClientProps) {
     setFormStage(LeadStage.NEW);
     setFormFollowUp("");
     setFormNotes("");
+    setFormAssignedTo(currentUser?.id || (assignees.length > 0 ? assignees[0].id : ""));
+    setFormCreatedBy(currentUser?.id || (assignees.length > 0 ? assignees[0].id : ""));
     setErrorMsg("");
     setIsSheetOpen(true);
   };
@@ -162,6 +198,8 @@ export function LeadsClient({ initialLeads }: LeadsClientProps) {
     setFormStage(lead.stage);
     setFormFollowUp(lead.followUpAt ? lead.followUpAt.split("T")[0] : "");
     setFormNotes(lead.notes || "");
+    setFormAssignedTo(lead.assignedToId || "");
+    setFormCreatedBy(lead.createdById || "");
     setErrorMsg("");
     setIsSheetOpen(true);
   };
@@ -187,9 +225,14 @@ export function LeadsClient({ initialLeads }: LeadsClientProps) {
           stage: formStage,
           followUpAt: formFollowUp,
           notes: formNotes,
+          assignedToId: formAssignedTo || undefined,
+          createdById: formCreatedBy || undefined,
         });
 
         if (res.success && res.data) {
+          const assignedUser = assignees.find((u) => u.id === formAssignedTo);
+          const createdUser = assignees.find((u) => u.id === formCreatedBy);
+
           setLeads((prev) =>
             prev.map((l) =>
               l.id === editingLead.id
@@ -204,6 +247,10 @@ export function LeadsClient({ initialLeads }: LeadsClientProps) {
                     stage: formStage,
                     followUpAt: formFollowUp || null,
                     notes: formNotes || null,
+                    assignedToId: formAssignedTo || null,
+                    assignedTo: assignedUser ? { id: assignedUser.id, name: assignedUser.name, email: assignedUser.email, image: assignedUser.image } : l.assignedTo,
+                    createdById: formCreatedBy || null,
+                    createdBy: createdUser ? { id: createdUser.id, name: createdUser.name, email: createdUser.email, image: createdUser.image } : l.createdBy,
                   }
                 : l
             )
@@ -226,9 +273,14 @@ export function LeadsClient({ initialLeads }: LeadsClientProps) {
           stage: formStage,
           followUpAt: formFollowUp,
           notes: formNotes,
+          assignedToId: formAssignedTo || undefined,
+          createdById: formCreatedBy || undefined,
         });
 
         if (res.success && res.data) {
+          const assignedUser = assignees.find((u) => u.id === (res.data.assignedToId || formAssignedTo));
+          const createdUser = assignees.find((u) => u.id === (res.data.createdById || formCreatedBy));
+
           const newLeadItem: LeadItem = {
             id: res.data.id,
             name: res.data.name,
@@ -241,6 +293,10 @@ export function LeadsClient({ initialLeads }: LeadsClientProps) {
             estimatedValue: res.data.estimatedValue ? Number(res.data.estimatedValue) : 0,
             notes: res.data.notes,
             followUpAt: res.data.followUpAt ? (typeof res.data.followUpAt === "string" ? res.data.followUpAt : (res.data.followUpAt as any).toISOString()) : null,
+            assignedToId: res.data.assignedToId || formAssignedTo || null,
+            assignedTo: (res.data as any).assignedTo || (assignedUser ? { id: assignedUser.id, name: assignedUser.name, email: assignedUser.email, image: assignedUser.image } : null),
+            createdById: res.data.createdById || formCreatedBy || null,
+            createdBy: (res.data as any).createdBy || (createdUser ? { id: createdUser.id, name: createdUser.name, email: createdUser.email, image: createdUser.image } : null),
             convertedClientId: null,
             convertedClient: null,
             createdAt: typeof res.data.createdAt === "string" ? res.data.createdAt : (res.data.createdAt as any).toISOString(),
@@ -507,8 +563,8 @@ export function LeadsClient({ initialLeads }: LeadsClientProps) {
       </div>
 
       {/* 🔍 Search & Filters Bar */}
-      <div className="bg-surface-white border border-border/80 rounded-2xl p-3.5 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="relative w-full sm:w-48 transition-all duration-300 focus-within:sm:w-56">
+      <div className="bg-surface-white border border-border/80 rounded-2xl p-3 md:p-3.5 shadow-2xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        <div className="relative w-full sm:w-56 transition-all duration-300">
           <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-secondary" />
           <input
             type="text"
@@ -519,17 +575,17 @@ export function LeadsClient({ initialLeads }: LeadsClientProps) {
           />
         </div>
 
-        <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto no-scrollbar">
-          {/* Add New Lead button placed right before/above All Sources */}
+        <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto no-scrollbar pb-1 sm:pb-0">
+          {/* Add New Lead button */}
           <Button
             onClick={openCreateSheet}
-            className="font-bold text-xs bg-brand-orange hover:bg-brand-orange-hover text-white py-1.5 px-3 rounded-xl flex items-center gap-1.5 shadow-xs border-0 h-9 cursor-pointer active:scale-95 transition-all shrink-0 mr-1"
+            className="font-bold text-xs bg-brand-orange hover:bg-brand-orange-hover text-white py-1.5 px-3.5 rounded-xl flex items-center gap-1.5 shadow-xs border-0 h-9 cursor-pointer active:scale-95 transition-all shrink-0"
           >
             <IconPlus className="h-3.5 w-3.5" stroke={2.5} />
             <span>Add Lead</span>
           </Button>
 
-          <span className="text-xs font-bold text-text-secondary shrink-0">Source:</span>
+          <span className="text-xs font-bold text-text-secondary shrink-0 hidden sm:inline">Source:</span>
           <button
             onClick={() => setSourceFilter("ALL")}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer active:scale-95 ${
@@ -668,22 +724,52 @@ export function LeadsClient({ initialLeads }: LeadsClientProps) {
                           </span>
                         </div>
 
-                        {/* Contact details */}
-                        <div className="space-y-1 text-[10px] font-bold text-text-secondary pt-1 border-t border-border/50">
+                        {/* Contact & Metadata details */}
+                        <div className="space-y-1.5 text-[10.5px] text-text-secondary pt-2 border-t border-border/50">
                           {lead.email && (
                             <div className="flex items-center gap-1.5 truncate">
-                              <IconMail className="h-3 w-3 shrink-0 text-text-secondary" />
-                              <span className="truncate">{lead.email}</span>
+                              <IconMail className="h-3.5 w-3.5 shrink-0 text-text-secondary/60" />
+                              <span className="truncate font-medium">{lead.email}</span>
                             </div>
                           )}
                           {lead.phone && (
                             <div className="flex items-center gap-1.5 truncate">
-                              <IconPhone className="h-3 w-3 shrink-0 text-text-secondary" />
-                              <span>{lead.phone}</span>
+                              <IconPhone className="h-3.5 w-3.5 shrink-0 text-text-secondary/60" />
+                              <span className="font-medium">{lead.phone}</span>
                             </div>
                           )}
+
+                          <div className="flex flex-col gap-1 pt-1">
+                            {lead.assignedTo && (
+                              <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-brand-orange-tint/30 border border-brand-orange/15 text-[10px] font-semibold text-text-primary truncate" title={`Assigned Owner: ${lead.assignedTo.name}`}>
+                                <div className="h-3.5 w-3.5 rounded-full bg-brand-orange/20 text-brand-orange flex items-center justify-center shrink-0">
+                                  <IconUser className="h-2.5 w-2.5" />
+                                </div>
+                                <span className="truncate">
+                                  <span className="text-text-secondary font-medium">Owner: </span>
+                                  {lead.assignedTo.name}
+                                </span>
+                              </div>
+                            )}
+
+                            <div className="flex items-center justify-between gap-1.5 text-[9.5px] font-medium text-text-secondary pt-0.5">
+                              {lead.createdBy ? (
+                                <span className="truncate" title={`Created by ${lead.createdBy.name}`}>
+                                  By: <strong className="font-semibold text-text-primary">{lead.createdBy.name}</strong>
+                                </span>
+                              ) : (
+                                <span />
+                              )}
+                              {lead.createdAt && (
+                                <span className="shrink-0 text-text-secondary/80" title={`Added on ${formatLeadDateTime(lead.createdAt)}`}>
+                                  {formatLeadDateTime(lead.createdAt)}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
                           {lead.followUpAt && (
-                            <div className="flex items-center gap-1.5 text-amber-600 font-extrabold">
+                            <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 font-extrabold text-[10px] bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20 w-fit mt-1">
                               <IconCalendar className="h-3 w-3 shrink-0" />
                               <span>Due: {new Date(lead.followUpAt).toLocaleDateString("en-IN", { month: "short", day: "numeric" })}</span>
                             </div>
@@ -763,6 +849,12 @@ export function LeadsClient({ initialLeads }: LeadsClientProps) {
               <SheetDescription className="text-xs text-text-secondary text-left font-medium">
                 Record potential client inquiries, deal value estimates, and follow-up dates.
               </SheetDescription>
+              {editingLead && editingLead.createdAt && (
+                <div className="mt-1.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-page border border-border/60 text-[11px] font-semibold text-text-secondary">
+                  <IconClock className="h-3.5 w-3.5 text-text-secondary/70" />
+                  <span>Added on {formatLeadDateTime(editingLead.createdAt)}</span>
+                </div>
+              )}
             </SheetHeader>
 
             {errorMsg && (
@@ -880,6 +972,47 @@ export function LeadsClient({ initialLeads }: LeadsClientProps) {
                   onChange={(e) => setFormFollowUp(e.target.value)}
                   className="w-full h-10 px-3 bg-surface-page border border-border/80 rounded-xl text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-brand-orange"
                 />
+              </div>
+            </div>
+
+            {/* Grid: Assigned Owner & Created By */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-text-primary flex items-center gap-1">
+                  <IconUser className="h-3.5 w-3.5 text-brand-orange" />
+                  <span>Assigned Owner</span>
+                </label>
+                <select
+                  value={formAssignedTo}
+                  onChange={(e) => setFormAssignedTo(e.target.value)}
+                  className="w-full h-10 px-3 bg-surface-page border border-border/80 rounded-xl text-xs font-semibold text-text-primary focus:outline-none"
+                >
+                  <option value="">Unassigned</option>
+                  {assignees.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.name} ({user.role || "Team"})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-text-primary flex items-center gap-1">
+                  <IconUserPlus className="h-3.5 w-3.5 text-text-secondary" />
+                  <span>Created By</span>
+                </label>
+                <select
+                  value={formCreatedBy}
+                  onChange={(e) => setFormCreatedBy(e.target.value)}
+                  className="w-full h-10 px-3 bg-surface-page border border-border/80 rounded-xl text-xs font-semibold text-text-primary focus:outline-none"
+                >
+                  <option value="">System Default</option>
+                  {assignees.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.name}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 
