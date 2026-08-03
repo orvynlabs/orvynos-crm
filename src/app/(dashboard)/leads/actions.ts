@@ -24,60 +24,54 @@ export type UpdateLeadInput = Partial<CreateLeadInput> & {
 };
 
 export async function getLeads() {
-  return unstable_cache(
-    async () => {
-      try {
-        const leads = await prisma.lead.findMany({
-          orderBy: [
-            { stage: "asc" },
-            { sortOrder: "asc" },
-            { createdAt: "desc" },
-          ],
-          include: {
-            convertedClient: {
-              select: { id: true, name: true },
-            },
-            assignedTo: {
-              select: { id: true, name: true, email: true, image: true },
-            },
-            createdBy: {
-              select: { id: true, name: true, email: true, image: true },
-            },
-          },
-        });
+  try {
+    const leads = await prisma.lead.findMany({
+      orderBy: [
+        { stage: "asc" },
+        { sortOrder: "asc" },
+        { createdAt: "desc" },
+      ],
+      include: {
+        convertedClient: {
+          select: { id: true, name: true },
+        },
+        assignedTo: {
+          select: { id: true, name: true, email: true, image: true },
+        },
+        createdBy: {
+          select: { id: true, name: true, email: true, image: true },
+        },
+      },
+    });
 
-        return {
-          success: true,
-          data: leads.map((l) => ({
-            id: l.id,
-            name: l.name,
-            company: l.company,
-            email: l.email,
-            phone: l.phone,
-            source: l.source,
-            stage: l.stage as LeadStage,
-            sortOrder: l.sortOrder,
-            estimatedValue: l.estimatedValue ? Number(l.estimatedValue) : 0,
-            notes: l.notes,
-            followUpAt: l.followUpAt ? l.followUpAt.toISOString() : null,
-            assignedToId: l.assignedToId,
-            assignedTo: l.assignedTo ? { id: l.assignedTo.id, name: l.assignedTo.name, email: l.assignedTo.email, image: l.assignedTo.image } : null,
-            createdById: l.createdById,
-            createdBy: l.createdBy ? { id: l.createdBy.id, name: l.createdBy.name, email: l.createdBy.email, image: l.createdBy.image } : null,
-            convertedClientId: l.convertedClientId,
-            convertedClient: l.convertedClient ? { id: l.convertedClient.id, name: l.convertedClient.name } : null,
-            createdAt: l.createdAt.toISOString(),
-            updatedAt: l.updatedAt.toISOString(),
-          })),
-        };
-      } catch (error: any) {
-        console.error("Failed to fetch leads:", error);
-        return { success: false, error: error?.message || "Failed to fetch leads", data: [] };
-      }
-    },
-    ["leads-data-v2"],
-    { revalidate: 30, tags: ["leads"] }
-  )();
+    return {
+      success: true,
+      data: leads.map((l) => ({
+        id: l.id,
+        name: l.name,
+        company: l.company,
+        email: l.email,
+        phone: l.phone,
+        source: l.source,
+        stage: l.stage as LeadStage,
+        sortOrder: l.sortOrder,
+        estimatedValue: l.estimatedValue ? Number(l.estimatedValue) : 0,
+        notes: l.notes,
+        followUpAt: l.followUpAt ? l.followUpAt.toISOString() : null,
+        assignedToId: l.assignedToId || null,
+        assignedTo: l.assignedTo ? { id: l.assignedTo.id, name: l.assignedTo.name, email: l.assignedTo.email, image: l.assignedTo.image } : null,
+        createdById: l.createdById || null,
+        createdBy: l.createdBy ? { id: l.createdBy.id, name: l.createdBy.name, email: l.createdBy.email, image: l.createdBy.image } : null,
+        convertedClientId: l.convertedClientId,
+        convertedClient: l.convertedClient ? { id: l.convertedClient.id, name: l.convertedClient.name } : null,
+        createdAt: l.createdAt.toISOString(),
+        updatedAt: l.updatedAt.toISOString(),
+      })),
+    };
+  } catch (error: any) {
+    console.error("Failed to fetch leads:", error);
+    return { success: false, error: error?.message || "Failed to fetch leads", data: [] };
+  }
 }
 
 export async function getLeadAssignees() {
