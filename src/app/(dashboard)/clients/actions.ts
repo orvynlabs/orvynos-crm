@@ -90,3 +90,18 @@ export async function updateClient(id: string, data: CreateClientInput & { notes
     return { success: false, error: error instanceof Error ? error.message : "Failed to update client" };
   }
 }
+
+export async function deleteClient(id: string) {
+  try {
+    await prisma.client.delete({
+      where: { id },
+    });
+    revalidatePath("/clients");
+    revalidateTag("clients");
+    revalidateTag("dashboard-metrics");
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to delete client:", error);
+    return { success: false, error: error instanceof Error ? error.message : "Failed to delete client" };
+  }
+}

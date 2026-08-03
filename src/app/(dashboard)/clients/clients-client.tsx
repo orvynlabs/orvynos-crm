@@ -16,6 +16,7 @@ import {
   IconSparkles,
   IconFileText,
   IconX,
+  IconTrash,
 } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { ClientForm, type ClientFormValues } from "@/components/clients/client-form";
@@ -27,8 +28,9 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { createClient } from "./actions";
+import { createClient, deleteClient } from "./actions";
 import { toast } from "@/components/ui/toast-provider";
+import { confirmModal } from "@/components/ui/confirm-provider";
 
 type Project = {
   id: string;
@@ -257,6 +259,27 @@ export function ClientsClient({ initialClients, metrics }: ClientsClientProps) {
     });
   };
 
+  const handleDeleteClient = async (id: string, name: string) => {
+    const ok = await confirmModal({
+      title: `Delete Client "${name}"?`,
+      description: `Are you sure you want to delete ${name}? This will remove the client profile and linked data. This action cannot be undone.`,
+      confirmText: "Delete Client",
+      variant: "danger",
+    });
+    if (!ok) return;
+
+    startTransition(async () => {
+      setClientsList((prev) => prev.filter((c) => c.id !== id));
+      const res = await deleteClient(id);
+      if (res.success) {
+        toast.warning("Client Deleted", `${name} was permanently removed.`);
+      } else {
+        const err = res.error || "Failed to delete client.";
+        toast.error("Delete Failed", err);
+      }
+    });
+  };
+
   return (
     <div className="space-y-4 font-sans text-left pb-20 md:pb-6">
       {/* ─── Compact Modern Header ─── */}
@@ -456,13 +479,27 @@ export function ClientsClient({ initialClients, metrics }: ClientsClientProps) {
                       <IconBriefcase className="h-3 w-3 text-blue-500" />
                       {client.projects.length} {client.projects.length === 1 ? "Project" : "Projects"}
                     </span>
-                    <Link
-                      href={`/clients/${client.id}`}
-                      className="text-[11px] font-bold text-brand-orange hover:text-brand-orange-hover flex items-center gap-0.5 cursor-pointer touch-manipulation active:scale-95 transition-transform"
-                    >
-                      <span>View Profile</span>
-                      <IconChevronRight className="h-3 w-3" />
-                    </Link>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          handleDeleteClient(client.id, client.name);
+                        }}
+                        className="p-1 rounded-lg text-text-secondary hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition cursor-pointer"
+                        title="Delete Client"
+                      >
+                        <IconTrash className="h-3.5 w-3.5" />
+                      </button>
+                      <Link
+                        href={`/clients/${client.id}`}
+                        className="text-[11px] font-bold text-brand-orange hover:text-brand-orange-hover flex items-center gap-0.5 cursor-pointer touch-manipulation active:scale-95 transition-transform"
+                      >
+                        <span>View Profile</span>
+                        <IconChevronRight className="h-3 w-3" />
+                      </Link>
+                    </div>
                   </div>
                 </motion.div>
               );

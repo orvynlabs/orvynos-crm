@@ -29,6 +29,10 @@ export interface GenerateDocumentResult {
   documentId: string;
 }
 
+let cachedLogoBase64: string | null = null;
+let cachedLogo2Base64: string | null = null;
+let cachedFaviconBase64: string | null = null;
+
 /**
  * Injects brand assets (logo, favicon, fonts) into HTML for PDF rendering.
  * Converts local image paths to base64 data URIs and prepends Google Fonts.
@@ -36,27 +40,45 @@ export interface GenerateDocumentResult {
 export function injectBrandAssets(html: string): string {
   let result = html;
 
-  // Inline logo assets as base64
+  // Inline logo assets as base64 with in-memory caching
   try {
-    const logoPath = path.join(process.cwd(), 'public/brand/document-logo.png');
-    if (fs.existsSync(logoPath)) {
-      const logoBuffer = fs.readFileSync(logoPath);
-      const logoBase64 = `data:image/png;base64,${logoBuffer.toString('base64')}`;
-      result = result.replaceAll('/brand/document-logo.png', logoBase64);
+    if (cachedLogoBase64 === null) {
+      const logoPath = path.join(process.cwd(), 'public/brand/document-logo.png');
+      if (fs.existsSync(logoPath)) {
+        const logoBuffer = fs.readFileSync(logoPath);
+        cachedLogoBase64 = `data:image/png;base64,${logoBuffer.toString('base64')}`;
+      } else {
+        cachedLogoBase64 = '';
+      }
+    }
+    if (cachedLogoBase64) {
+      result = result.replaceAll('/brand/document-logo.png', cachedLogoBase64);
     }
 
-    const logo2Path = path.join(process.cwd(), 'public/brand/logo.png');
-    if (fs.existsSync(logo2Path)) {
-      const logoBuffer = fs.readFileSync(logo2Path);
-      const logoBase64 = `data:image/png;base64,${logoBuffer.toString('base64')}`;
-      result = result.replaceAll('/brand/logo.png', logoBase64);
+    if (cachedLogo2Base64 === null) {
+      const logo2Path = path.join(process.cwd(), 'public/brand/logo.png');
+      if (fs.existsSync(logo2Path)) {
+        const logoBuffer = fs.readFileSync(logo2Path);
+        cachedLogo2Base64 = `data:image/png;base64,${logoBuffer.toString('base64')}`;
+      } else {
+        cachedLogo2Base64 = '';
+      }
+    }
+    if (cachedLogo2Base64) {
+      result = result.replaceAll('/brand/logo.png', cachedLogo2Base64);
     }
 
-    const faviconPath = path.join(process.cwd(), 'public/brand/favicon-48.png');
-    if (fs.existsSync(faviconPath)) {
-      const faviconBuffer = fs.readFileSync(faviconPath);
-      const faviconBase64 = `data:image/png;base64,${faviconBuffer.toString('base64')}`;
-      result = result.replaceAll('/brand/favicon-48.png', faviconBase64);
+    if (cachedFaviconBase64 === null) {
+      const faviconPath = path.join(process.cwd(), 'public/brand/favicon-48.png');
+      if (fs.existsSync(faviconPath)) {
+        const faviconBuffer = fs.readFileSync(faviconPath);
+        cachedFaviconBase64 = `data:image/png;base64,${faviconBuffer.toString('base64')}`;
+      } else {
+        cachedFaviconBase64 = '';
+      }
+    }
+    if (cachedFaviconBase64) {
+      result = result.replaceAll('/brand/favicon-48.png', cachedFaviconBase64);
     }
   } catch (e) {
     console.warn('[PDF Pipeline] Base64 inline failed:', e);
@@ -210,12 +232,14 @@ export async function generatePdfFromHtml(
   const page = await context.newPage();
 
   try {
-    // Inject the HTML directly
-    await page.setContent(htmlContent, { waitUntil: 'load', timeout: 15000 });
+    // Inject the HTML directly with fast domcontentloaded strategy
+    await page.setContent(htmlContent, { waitUntil: 'domcontentloaded', timeout: 10000 });
 
-    // Wait for webfonts to actually finish loading
-    await page.evaluate(() => (document as { fonts?: { ready: Promise<unknown> } }).fonts?.ready).catch(() => {});
-    await page.waitForTimeout(150);
+    // Wait for webfonts with a 1.5s max timeout to prevent hangs
+    await Promise.race([
+      page.evaluate(() => (document as { fonts?: { ready: Promise<unknown> } }).fonts?.ready),
+      new Promise((r) => setTimeout(r, 1500)),
+    ]).catch(() => {});
 
     const pdfBuffer = await page.pdf({
       format: 'A4',

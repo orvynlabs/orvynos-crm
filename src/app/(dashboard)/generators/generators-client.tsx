@@ -829,11 +829,21 @@ export function GeneratorsClient({
 
   // ─── Filtered Items ───
   const filteredProposals = useMemo(
-    () => proposals.filter(p => !searchQuery || [p.title, p.number, p.clientName].some(s => s.toLowerCase().includes(searchQuery.toLowerCase()))),
+    () => proposals.filter(p => {
+      if (!searchQuery) return true;
+      const q = searchQuery.toLowerCase().trim();
+      return [p.title, p.number, p.clientName, p.projectName, p.amount ? String(p.amount) : ""]
+        .some(s => s && s.toLowerCase().includes(q));
+    }),
     [proposals, searchQuery]
   );
   const filteredInvoices = useMemo(
-    () => invoices.filter(i => !searchQuery || [i.number, i.clientName].some(s => s.toLowerCase().includes(searchQuery.toLowerCase()))),
+    () => invoices.filter(i => {
+      if (!searchQuery) return true;
+      const q = searchQuery.toLowerCase().trim();
+      return [i.number, i.clientName, i.projectName, i.total ? String(i.total) : ""]
+        .some(s => s && s.toLowerCase().includes(q));
+    }),
     [invoices, searchQuery]
   );
   const filteredAgreements = useMemo(
@@ -842,7 +852,9 @@ export function GeneratorsClient({
       if (agrSubFilter === "SOW" && !(a.title.includes("Statement") || a.title.includes("SOW"))) return false;
       if (agrSubFilter === "PCC" && !(a.title.includes("Completion") || a.title.includes("PCC") || a.title.includes("Handover"))) return false;
       if (!searchQuery) return true;
-      return [a.title, a.number, a.clientName].some(s => s.toLowerCase().includes(searchQuery.toLowerCase()));
+      const q = searchQuery.toLowerCase().trim();
+      return [a.title, a.number, a.clientName, a.projectName]
+        .some(s => s && s.toLowerCase().includes(q));
     }),
     [agreements, searchQuery, agrSubFilter]
   );

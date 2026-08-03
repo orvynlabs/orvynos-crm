@@ -934,9 +934,26 @@ export async function getGeneratorItemDetails(id: string, type: 'proposal' | 'in
   }
 }
 
-// ─────────────────────────────────────────────
-// Update Proposal
-// ─────────────────────────────────────────────
+// Helper functions for safe date & number parsing
+function parseSafeDate(dateStr: string | undefined | null, fallbackOffsetDays: number = 30): Date {
+  if (!dateStr) {
+    const d = new Date();
+    d.setDate(d.getDate() + fallbackOffsetDays);
+    return d;
+  }
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) {
+    const fallback = new Date();
+    fallback.setDate(fallback.getDate() + fallbackOffsetDays);
+    return fallback;
+  }
+  return d;
+}
+
+function parseSafeNum(val: any, fallback: number = 0): number {
+  const n = Number(val);
+  return isNaN(n) ? fallback : n;
+}
 
 export async function updateProposal(id: string, data: {
   title: string;
@@ -979,12 +996,13 @@ export async function updateProposal(id: string, data: {
       : null;
 
     const dateStr = existing.createdAt.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+    const validUntilObj = parseSafeDate(data.validUntil, 30);
 
     const templateProps: ProposalTemplateProps = {
       proposalNumber: existing.number,
       title: data.title,
       date: dateStr,
-      validUntil: new Date(data.validUntil).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }),
+      validUntil: validUntilObj.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }),
       status: existing.status as any,
       clientName: client.name,
       clientContactName: client.contactName || undefined,
@@ -998,7 +1016,7 @@ export async function updateProposal(id: string, data: {
       deliverables: data.deliverables,
       timeline: data.timeline,
       pricingItems: data.pricingItems,
-      totalAmount: data.totalAmount,
+      totalAmount: parseSafeNum(data.totalAmount, 0),
       termsAndConditions: data.termsAndConditions,
     };
 
@@ -1031,8 +1049,8 @@ export async function updateProposal(id: string, data: {
         clientId: targetClientId,
         projectId: data.projectId || null,
         content: content as any,
-        amount: data.totalAmount,
-        validUntil: new Date(data.validUntil),
+        amount: parseSafeNum(data.totalAmount, 0),
+        validUntil: validUntilObj,
         pdfKey: storageKey,
       },
       include: { client: { select: { name: true } }, project: { select: { name: true } } },
@@ -1109,7 +1127,8 @@ export async function updateInvoice(id: string, data: {
       : null;
 
     const issueDateStr = existing.issueDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
-    const dueDateStr = new Date(data.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+    const dueDateObj = parseSafeDate(data.dueDate, 15);
+    const dueDateStr = dueDateObj.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
 
     const templateProps: InvoiceTemplateProps = {
       invoiceNumber: existing.number,
@@ -1124,10 +1143,10 @@ export async function updateInvoice(id: string, data: {
       clientAddress: [client.address, client.city, client.state].filter(Boolean).join(', ') || undefined,
       projectName: project?.name,
       lineItems: data.lineItems,
-      subtotal: data.subtotal,
-      taxRate: data.taxRate,
-      taxAmount: data.taxAmount,
-      total: data.total,
+      subtotal: parseSafeNum(data.subtotal, 0),
+      taxRate: parseSafeNum(data.taxRate, 0),
+      taxAmount: parseSafeNum(data.taxAmount, 0),
+      total: parseSafeNum(data.total, 0),
       notes: data.notes,
     };
 
@@ -1150,11 +1169,11 @@ export async function updateInvoice(id: string, data: {
         clientId: targetClientId,
         projectId: data.projectId || null,
         items: data.lineItems as any,
-        subtotal: data.subtotal,
-        taxRate: data.taxRate,
-        taxAmount: data.taxAmount,
-        total: data.total,
-        dueDate: new Date(data.dueDate),
+        subtotal: parseSafeNum(data.subtotal, 0),
+        taxRate: parseSafeNum(data.taxRate, 0),
+        taxAmount: parseSafeNum(data.taxAmount, 0),
+        total: parseSafeNum(data.total, 0),
+        dueDate: dueDateObj,
         notes: data.notes || null,
         pdfKey: storageKey,
       },
@@ -1240,9 +1259,11 @@ export async function updateAgreement(id: string, data: {
       ? await withRetry(() => prisma.project.findUnique({ where: { id: data.projectId }, select: { name: true } }))
       : null;
 
-    const effectiveDateStr = new Date(data.effectiveDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
-    const expiresAtStr = data.expiresAt
-      ? new Date(data.expiresAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
+    const effectiveDateObj = parseSafeDate(data.effectiveDate, 0);
+    const effectiveDateStr = effectiveDateObj.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+    const expiresAtObj = data.expiresAt ? parseSafeDate(data.expiresAt, 365) : undefined;
+    const expiresAtStr = expiresAtObj
+      ? expiresAtObj.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
       : undefined;
 
     const existingContent = (existing.content as any) || {};
@@ -1285,8 +1306,8 @@ export async function updateAgreement(id: string, data: {
       outOfScopeItems: data.outOfScopeItems,
       techStack: data.techStack,
       milestones: data.milestones,
-      totalFee: data.totalFee,
-      advanceAmount: data.advanceAmount,
+      totalFee: data.totalFee ? parseSafeNum(data.totalFee) : undefined,
+      advanceAmount: data.advanceAmount ? parseSafeNum(data.advanceAmount) : undefined,
       clauses,
     };
 
@@ -1312,8 +1333,8 @@ export async function updateAgreement(id: string, data: {
       outOfScopeItems: data.outOfScopeItems,
       techStack: data.techStack,
       milestones: data.milestones,
-      totalFee: data.totalFee,
-      advanceAmount: data.advanceAmount,
+      totalFee: data.totalFee ? parseSafeNum(data.totalFee) : undefined,
+      advanceAmount: data.advanceAmount ? parseSafeNum(data.advanceAmount) : undefined,
     };
 
     const updated = await withRetry(() => prisma.agreement.update({
@@ -1323,8 +1344,8 @@ export async function updateAgreement(id: string, data: {
         clientId: targetClientId,
         projectId: data.projectId || null,
         content: content as any,
-        effectiveDate: new Date(data.effectiveDate),
-        expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
+        effectiveDate: effectiveDateObj,
+        expiresAt: expiresAtObj || null,
         pdfKey: storageKey,
       },
       include: { client: { select: { name: true } }, project: { select: { name: true } } },

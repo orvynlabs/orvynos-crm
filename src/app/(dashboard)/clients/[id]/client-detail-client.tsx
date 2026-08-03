@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useTransition, useMemo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   IconArrowLeft,
   IconPhone,
@@ -41,7 +42,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { ClientForm, type ClientFormValues } from "@/components/clients/client-form";
-import { updateClient } from "../actions";
+import { updateClient, deleteClient } from "../actions";
 import { createDocument, deleteDocument } from "../../documents/actions";
 import { deleteGeneratorItem } from "../../generators/actions";
 
@@ -421,6 +422,28 @@ export function ClientDetailClient({ client }: ClientDetailClientProps) {
     });
   };
 
+  const router = useRouter();
+
+  const handleDeleteClient = async () => {
+    const ok = await confirmModal({
+      title: `Delete Client "${client.name}"?`,
+      description: `Are you sure you want to delete ${client.name}? This will remove the client profile, vault documents, and linked data. This action cannot be undone.`,
+      confirmText: "Delete Client",
+      variant: "danger",
+    });
+    if (!ok) return;
+
+    startTransition(async () => {
+      const res = await deleteClient(client.id);
+      if (res.success) {
+        toast.warning("Client Deleted", `${client.name} removed from CRM.`);
+        router.push("/clients");
+      } else {
+        toast.error("Delete Failed", res.error || "Failed to delete client.");
+      }
+    });
+  };
+
   return (
     <div className="space-y-6 font-sans">
       {/* Back button */}
@@ -463,6 +486,15 @@ export function ClientDetailClient({ client }: ClientDetailClientProps) {
           </div>
 
           <div className="flex items-center gap-2.5 self-start sm:self-auto">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDeleteClient}
+              className="h-7.5 border-red-200 dark:border-red-900/40 bg-surface-white hover:bg-red-50 dark:hover:bg-red-950/30 text-red-600 dark:text-red-400 font-bold text-xs cursor-pointer select-none shadow-2xs active:scale-95 transition-all flex items-center gap-1"
+            >
+              <IconTrash className="h-3.5 w-3.5 text-red-500" />
+              <span>Delete</span>
+            </Button>
             {/* Edit Drawer sheet */}
             <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
               <SheetTrigger
