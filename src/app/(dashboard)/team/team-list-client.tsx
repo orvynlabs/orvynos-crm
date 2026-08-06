@@ -24,7 +24,7 @@ import { Button } from "@/components/ui/button";
 import { updateTeamMemberStatus, createDailyUpdate, deleteDailyUpdate } from "./actions";
 import { toast } from "@/components/ui/toast-provider";
 import { confirmModal } from "@/components/ui/confirm-provider";
-import { useWebSocket } from "@/components/providers/websocket-provider";
+import { useWebSocket, isMemberOnline } from "@/components/providers/websocket-provider";
 import {
   Sheet,
   SheetContent,
@@ -591,13 +591,7 @@ export function TeamListClient({
               Online Right Now
             </span>
             <span className="text-xl font-black text-emerald-600 dark:text-emerald-400 leading-tight mt-1 block">
-              {members.filter((m) =>
-                onlineUsers.some(
-                  (u) =>
-                    (u.id && (u.id === m.userId || u.id === m.id)) ||
-                    (u.email && m.email && u.email.toLowerCase() === m.email.toLowerCase())
-                )
-              ).length} Online
+              {members.filter((m) => isMemberOnline(m, onlineUsers)).length} Online
             </span>
           </div>
           <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-100 dark:border-emerald-900/30 shrink-0">
@@ -649,11 +643,7 @@ export function TeamListClient({
               {filteredMembers.map((member) => {
                 const avatarGrad = getAvatarGradient(member.name);
                 const initials = getInitials(member.name);
-                const isUserOnline = onlineUsers.some(
-                  (u) =>
-                    (u.id && (u.id === member.userId || u.id === member.id)) ||
-                    (u.email && member.email && u.email.toLowerCase() === member.email.toLowerCase())
-                );
+                const isUserOnline = isMemberOnline(member, onlineUsers);
 
                 return (
                   <div

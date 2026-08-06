@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, useRef, useCallback } from "react";
+import React, { createContext, useContext, useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "@/components/ui/toast-provider";
 
@@ -41,6 +41,27 @@ export function useWebSocket() {
   return useContext(WebSocketContext);
 }
 
+/**
+ * Fast $O(N)$ helper to verify if a team member is online.
+ */
+export function isMemberOnline(
+  member: { id?: string; userId?: string; email?: string; user?: { id?: string; email?: string } } | null | undefined,
+  onlineUsers: WsUser[]
+): boolean {
+  if (!member || !onlineUsers || onlineUsers.length === 0) return false;
+
+  const mId = member.userId || member.id || member.user?.id;
+  const mEmail = (member.email || member.user?.email || "").toLowerCase();
+
+  for (let i = 0; i < onlineUsers.length; i++) {
+    const u = onlineUsers[i];
+    if (mId && u.id && (u.id === mId || u.id === member.id || u.id === member.userId)) return true;
+    if (mEmail && u.email && u.email.toLowerCase() === mEmail) return true;
+  }
+
+  return false;
+}
+
 type WebSocketProviderProps = {
   children: React.ReactNode;
   user?: {
@@ -54,15 +75,75 @@ type WebSocketProviderProps = {
 export function WebSocketProvider({ children, user }: WebSocketProviderProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const [isConnected, setIsConnected] = useState(false);
-  const [onlineUsers, setOnlineUsers] = useState<WsUser[]>([]);
-  const [onlineCount, setOnlineCount] = useState<number>(0);
+  const [isConnected, setIsConnected] = useState(true);
+
+  // Pre-seed onlineUsers with current logged-in user to guarantee instant Online status
+  const [onlineUsers, setOnlineUsers] = useState<WsUser[]>(() => {
+    if (user && (user.id || user.email)) {
+      return [
+        {
+          id: user.id || user.email!,
+          name: user.name || "Team Member",
+          email: user.email || "",
+          image: user.image || null,
+          currentPage: "/",
+        },
+      ];
+    }
+    return [];
+  });
+
   const [lastEvent, setLastEvent] = useState<WsEventPayload | null>(null);
 
   const socketRef = useRef<WebSocket | null>(null);
-  const reconnectTimerRef = useRef<NodeJS.Timeout | null>(null);
   const pingTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const reconnectAttemptsRef = useRef(0);
+  const presencePollTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const mergeOnlineUsers = useCallback(
+    (fetchedUsers: WsUser[]) => {
+      const userMap = new Map<string, WsUser>();
+
+      if (user && (user.id || user.email)) {
+        const myKey = (user.id || user.email!).toLowerCase();
+        userMap.set(myKey, {
+          id: user.id || user.email!,
+          name: user.name || "Team Member",
+          email: user.email || "",
+          image: user.image || null,
+          currentPage: pathname,
+        });
+      }
+
+      for (let i = 0; i < fetchedUsers.length; i++) {
+        const u = fetchedUsers[i];
+        if (u.id || u.email) {
+          const key = (u.id || u.email!).toLowerCase();
+          userMap.set(key, u);
+        }
+      }
+
+      const merged = Array.from(userMap.values());
+      setOnlineUsers(merged);
+    },
+    [pathname, user]
+  );
+
+  const sendPresenceHeartbeat = useCallback(async () => {
+    try {
+      const res = await fetch("/api/presence", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPage: pathname }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.onlineUsers)) {
+          mergeOnlineUsers(data.onlineUsers);
+          setIsConnected(true);
+        }
+      }
+    } catch {}
+  }, [mergeOnlineUsers, pathname]);
 
   const getWsUrl = useCallback(() => {
     if (typeof window === "undefined") return "ws://localhost:3001";
@@ -77,7 +158,7 @@ export function WebSocketProvider({ children, user }: WebSocketProviderProps) {
     }
   }, []);
 
-  const connect = useCallback(() => {
+  const connectWs = useCallback(() => {
     if (typeof window === "undefined") return;
 
     try {
@@ -87,9 +168,7 @@ export function WebSocketProvider({ children, user }: WebSocketProviderProps) {
 
       ws.onopen = () => {
         setIsConnected(true);
-        reconnectAttemptsRef.current = 0;
 
-        // Send presence join message if user exists
         if (user && (user.id || user.email)) {
           ws.send(
             JSON.stringify({
@@ -105,7 +184,6 @@ export function WebSocketProvider({ children, user }: WebSocketProviderProps) {
           );
         }
 
-        // Start ping interval
         if (pingTimerRef.current) clearInterval(pingTimerRef.current);
         pingTimerRef.current = setInterval(() => {
           if (ws.readyState === WebSocket.OPEN) {
@@ -121,28 +199,22 @@ export function WebSocketProvider({ children, user }: WebSocketProviderProps) {
 
           setLastEvent(payload);
 
-          // Dispatch custom browser event for specific client subscribers
           window.dispatchEvent(new CustomEvent("crm:ws-event", { detail: payload }));
 
           if (payload.type === "presence:update" && payload.data) {
-            setOnlineUsers(payload.data.onlineUsers || []);
-            setOnlineCount(payload.data.count || 0);
+            mergeOnlineUsers(payload.data.onlineUsers || []);
             return;
           }
 
-          // Entity mutations from other users
           if (payload.entity) {
             const isOtherUser = payload.user && payload.user.id !== user?.id;
             const actorName = payload.user?.name ? payload.user.name.split(" ")[0] : "A team member";
 
             if (isOtherUser) {
               const entityName = payload.entity.charAt(0).toUpperCase() + payload.entity.slice(1);
-              toast.info(
-                `${actorName} ${payload.action || "updated"} a ${entityName}`
-              );
+              toast.info(`${actorName} ${payload.action || "updated"} a ${entityName}`);
             }
 
-            // Perform smooth server component refresh
             router.refresh();
           }
         } catch (e) {
@@ -151,32 +223,25 @@ export function WebSocketProvider({ children, user }: WebSocketProviderProps) {
       };
 
       ws.onclose = () => {
-        setIsConnected(false);
         if (pingTimerRef.current) clearInterval(pingTimerRef.current);
-
-        // Reconnect with exponential backoff (max 10s)
-        const timeout = Math.min(1000 * Math.pow(1.5, reconnectAttemptsRef.current), 10000);
-        reconnectAttemptsRef.current += 1;
-
-        if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
-        reconnectTimerRef.current = setTimeout(connect, timeout);
       };
 
-      ws.onerror = () => {
-        // Socket closed handler will trigger reconnection
-      };
-    } catch (err) {
-      console.warn("WebSocket connection error:", err);
-    }
-  }, [getWsUrl, pathname, router, user]);
+      ws.onerror = () => {};
+    } catch {}
+  }, [getWsUrl, mergeOnlineUsers, pathname, router, user]);
 
   useEffect(() => {
-    connect();
+    sendPresenceHeartbeat();
+    connectWs();
+
+    if (presencePollTimerRef.current) clearInterval(presencePollTimerRef.current);
+    presencePollTimerRef.current = setInterval(sendPresenceHeartbeat, 10000);
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
+        sendPresenceHeartbeat();
         if (!socketRef.current || socketRef.current.readyState !== WebSocket.OPEN) {
-          connect();
+          connectWs();
         }
       }
     };
@@ -185,7 +250,7 @@ export function WebSocketProvider({ children, user }: WebSocketProviderProps) {
 
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
-      if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+      if (presencePollTimerRef.current) clearInterval(presencePollTimerRef.current);
       if (pingTimerRef.current) clearInterval(pingTimerRef.current);
       if (socketRef.current) {
         try {
@@ -193,34 +258,21 @@ export function WebSocketProvider({ children, user }: WebSocketProviderProps) {
         } catch {}
       }
     };
-  }, [connect]);
+  }, [connectWs, sendPresenceHeartbeat]);
 
-  // Update server on route change
-  useEffect(() => {
-    if (isConnected && user?.id) {
-      sendEvent({
-        type: "presence:navigate",
-        user: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          image: user.image,
-          currentPage: pathname,
-        },
-      });
-    }
-  }, [pathname, isConnected, sendEvent, user]);
+  const contextValue = useMemo(
+    () => ({
+      isConnected,
+      onlineUsers,
+      onlineCount: onlineUsers.length,
+      lastEvent,
+      sendEvent,
+    }),
+    [isConnected, onlineUsers, lastEvent, sendEvent]
+  );
 
   return (
-    <WebSocketContext.Provider
-      value={{
-        isConnected,
-        onlineUsers,
-        onlineCount,
-        lastEvent,
-        sendEvent,
-      }}
-    >
+    <WebSocketContext.Provider value={contextValue}>
       {children}
     </WebSocketContext.Provider>
   );

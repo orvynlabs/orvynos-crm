@@ -20,7 +20,7 @@ import {
   IconClock,
 } from "@tabler/icons-react";
 import { getSidebarTeamStatus, updateTeamMemberStatus } from "@/app/(dashboard)/team/actions";
-import { useWebSocket } from "@/components/providers/websocket-provider";
+import { useWebSocket, isMemberOnline } from "@/components/providers/websocket-provider";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -289,11 +289,7 @@ export function SidebarNav({ onNavigate, initialTeamStatus = [] }: { onNavigate?
             {!isTeamStatusHidden && (
               <div className="px-2.5 pb-2.5 space-y-1.5">
                 {teamStatus.slice(0, 4).map((member) => {
-                  const isUserOnline = onlineUsers.some(
-                    (u) =>
-                      (u.id && (u.id === member.userId || u.id === member.user?.id)) ||
-                      (u.email && (u.email.toLowerCase() === member.email?.toLowerCase() || u.email.toLowerCase() === member.user?.email?.toLowerCase()))
-                  );
+                  const isUserOnline = isMemberOnline(member, onlineUsers);
 
                   const statusDotColor = isUserOnline
                     ? "bg-emerald-500 ring-2 ring-emerald-300 dark:ring-emerald-900 animate-pulse"
@@ -340,46 +336,11 @@ export function SidebarNav({ onNavigate, initialTeamStatus = [] }: { onNavigate?
                             {member.name}
                           </span>
 
-                          <div onClick={(e) => e.stopPropagation()}>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger
-                                render={
-                                  <button
-                                    type="button"
-                                    className={`text-[8.5px] font-black px-1.5 py-0.5 rounded-md shrink-0 uppercase tracking-wider transition-all cursor-pointer flex items-center gap-0.5 hover:scale-105 active:scale-95 shadow-3xs ${statusBadgeStyle}`}
-                                  >
-                                    <span>{statusLabel}</span>
-                                    <IconChevronDown className="h-2.5 w-2.5 opacity-80" stroke={3.5} />
-                                  </button>
-                                }
-                              />
-                              <DropdownMenuContent align="end" side="right" className="w-32 rounded-xl border border-border p-1 shadow-lg bg-surface-white font-sans text-xs">
-                                <DropdownMenuGroup>
-                                  <DropdownMenuItem
-                                    onClick={() => handleStatusChange(member.id, "AVAILABLE")}
-                                    className="flex items-center gap-2 px-2 py-1.5 font-bold text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded-lg cursor-pointer text-[11px]"
-                                  >
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                                    <span>Available</span>
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() => handleStatusChange(member.id, "BUSY")}
-                                    className="flex items-center gap-2 px-2 py-1.5 font-bold text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40 rounded-lg cursor-pointer text-[11px]"
-                                  >
-                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                                    <span>Busy</span>
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() => handleStatusChange(member.id, "ON_LEAVE")}
-                                    className="flex items-center gap-2 px-2 py-1.5 font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg cursor-pointer text-[11px]"
-                                  >
-                                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-                                    <span>On Leave</span>
-                                  </DropdownMenuItem>
-                                </DropdownMenuGroup>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
+                          <span
+                            className={`text-[8.5px] font-black px-1.5 py-0.5 rounded-md shrink-0 uppercase tracking-wider select-none shadow-3xs ${statusBadgeStyle}`}
+                          >
+                            {statusLabel}
+                          </span>
                         </div>
                         <div className="text-[9.5px] text-text-secondary truncate mt-0.5 font-medium italic">
                           {todayFocus}
