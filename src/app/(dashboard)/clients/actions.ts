@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/db";
 import { revalidatePath, revalidateTag } from "next/cache";
+import { broadcastWsEvent } from "@/lib/ws/broadcaster";
 
 export type CreateClientInput = {
   name: string;
@@ -39,6 +40,13 @@ export async function createClient(data: CreateClientInput) {
       },
     });
 
+    await broadcastWsEvent({
+      type: "entity:update",
+      entity: "client",
+      action: "create",
+      data: newClient,
+    });
+
     revalidatePath("/clients");
     revalidateTag("clients");
     revalidateTag("dashboard-metrics");
@@ -55,7 +63,7 @@ export async function updateClient(id: string, data: CreateClientInput & { notes
       throw new Error("Company name is required");
     }
 
-    await prisma.client.update({
+    const updated = await prisma.client.update({
       where: { id },
       data: {
         name: data.name,
@@ -82,6 +90,13 @@ export async function updateClient(id: string, data: CreateClientInput & { notes
       });
     }
 
+    await broadcastWsEvent({
+      type: "entity:update",
+      entity: "client",
+      action: "update",
+      data: updated,
+    });
+
     revalidatePath("/clients");
     revalidatePath(`/clients/${id}`);
     return { success: true };
@@ -96,6 +111,14 @@ export async function deleteClient(id: string) {
     await prisma.client.delete({
       where: { id },
     });
+
+    await broadcastWsEvent({
+      type: "entity:update",
+      entity: "client",
+      action: "delete",
+      data: { id },
+    });
+
     revalidatePath("/clients");
     revalidateTag("clients");
     revalidateTag("dashboard-metrics");

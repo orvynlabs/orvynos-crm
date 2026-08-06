@@ -25,6 +25,7 @@ import { Logo } from "@/components/logo";
 import { ThemeToggle } from "./theme-toggle";
 import { CommandPalette } from "./command-palette";
 import { RevenueTargetWidget } from "./revenue-target-widget";
+import { PresenceBar } from "./presence-bar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -126,6 +127,9 @@ export function Topbar({ user }: TopbarProps) {
           >
             <IconSearch className="h-4 w-4" stroke={2} />
           </button>
+
+          {/* ⚡ Live WebSocket Presence Widget */}
+          <PresenceBar />
 
           {/* 🎯 50K Goal Revenue Target Tracker */}
           <RevenueTargetWidget />

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { revalidatePath, unstable_cache } from "next/cache";
 import { LeadStage } from "@/lib/enums";
 import { auth } from "@/auth";
+import { broadcastWsEvent } from "@/lib/ws/broadcaster";
 
 export type CreateLeadInput = {
   name: string;
@@ -126,6 +127,13 @@ export async function createLead(input: CreateLeadInput) {
       },
     });
 
+    await broadcastWsEvent({
+      type: "entity:update",
+      entity: "lead",
+      action: "create",
+      data: newLead,
+    });
+
     revalidatePath("/leads");
     revalidatePath("/");
     return { success: true, data: newLead };
@@ -166,6 +174,13 @@ export async function updateLead(id: string, input: UpdateLeadInput) {
       },
     });
 
+    await broadcastWsEvent({
+      type: "entity:update",
+      entity: "lead",
+      action: "update",
+      data: updated,
+    });
+
     revalidatePath("/leads");
     revalidatePath("/");
     return { success: true, data: updated };
@@ -185,6 +200,13 @@ export async function updateLeadStage(id: string, stage: LeadStage, sortOrder?: 
       },
     });
 
+    await broadcastWsEvent({
+      type: "entity:update",
+      entity: "lead",
+      action: "stage_change",
+      data: updated,
+    });
+
     revalidatePath("/leads");
     revalidatePath("/");
     return { success: true, data: updated };
@@ -198,6 +220,13 @@ export async function deleteLead(id: string) {
   try {
     await prisma.lead.delete({
       where: { id },
+    });
+
+    await broadcastWsEvent({
+      type: "entity:update",
+      entity: "lead",
+      action: "delete",
+      data: { id },
     });
 
     revalidatePath("/leads");
@@ -279,6 +308,13 @@ export async function convertLeadToClient(id: string, input?: ConvertLeadInput) 
         stage: LeadStage.WON,
         convertedClientId: newClient.id,
       },
+    });
+
+    await broadcastWsEvent({
+      type: "entity:update",
+      entity: "lead",
+      action: "convert",
+      data: { leadId: id, clientId: newClient.id, clientName: newClient.name },
     });
 
     revalidatePath("/leads");

@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { updateTeamMemberStatus, createDailyUpdate, deleteDailyUpdate } from "./actions";
 import { toast } from "@/components/ui/toast-provider";
 import { confirmModal } from "@/components/ui/confirm-provider";
+import { useWebSocket } from "@/components/providers/websocket-provider";
 import {
   Sheet,
   SheetContent,
@@ -157,8 +158,13 @@ export function TeamListClient({
   initialDailyUpdates,
   currentUser,
 }: TeamListClientProps) {
+  const { onlineUsers } = useWebSocket();
   const [members, setMembers] = useState<EnrichedTeamMember[]>(initialMembers);
   const [dailyUpdates, setDailyUpdates] = useState<DailyUpdateItem[]>(initialDailyUpdates);
+
+  useEffect(() => {
+    setMembers(initialMembers);
+  }, [initialMembers]);
   const [searchQuery, setSearchQuery] = useState("");
   const deferredSearchQuery = useDeferredValue(searchQuery);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
@@ -578,14 +584,20 @@ export function TeamListClient({
           </div>
         </div>
 
-        {/* Available Right Now */}
+        {/* Online Right Now */}
         <div className="p-4 bg-surface-white border border-border/80 rounded-2xl flex items-center justify-between shadow-2xs">
           <div>
             <span className="text-[10px] font-bold uppercase text-text-secondary tracking-wider block">
-              Available Right Now
+              Online Right Now
             </span>
             <span className="text-xl font-black text-emerald-600 dark:text-emerald-400 leading-tight mt-1 block">
-              {availableCount} Available
+              {members.filter((m) =>
+                onlineUsers.some(
+                  (u) =>
+                    (u.id && (u.id === m.userId || u.id === m.id)) ||
+                    (u.email && m.email && u.email.toLowerCase() === m.email.toLowerCase())
+                )
+              ).length} Online
             </span>
           </div>
           <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-100 dark:border-emerald-900/30 shrink-0">
@@ -637,7 +649,11 @@ export function TeamListClient({
               {filteredMembers.map((member) => {
                 const avatarGrad = getAvatarGradient(member.name);
                 const initials = getInitials(member.name);
-                const status = STATUS_CONFIG[member.status || "AVAILABLE"] || STATUS_CONFIG.AVAILABLE;
+                const isUserOnline = onlineUsers.some(
+                  (u) =>
+                    (u.id && (u.id === member.userId || u.id === member.id)) ||
+                    (u.email && member.email && u.email.toLowerCase() === member.email.toLowerCase())
+                );
 
                 return (
                   <div
@@ -645,20 +661,29 @@ export function TeamListClient({
                     className="bg-surface-white border border-border/80 rounded-2xl p-4 shadow-2xs hover:shadow-xs hover:border-brand-orange/30 transition-all duration-200 flex flex-col justify-between space-y-3.5 group/card"
                   >
                     <div className="space-y-3">
-                      {/* Header: Avatar + Info + Status Toggle */}
+                      {/* Header: Avatar + Info + Real-Time Presence Badge */}
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-center gap-2.5 min-w-0">
-                          {member.image ? (
-                            <img
-                              src={member.image}
-                              alt={member.name}
-                              className="w-10 h-10 rounded-full object-cover border border-border/80 shrink-0 shadow-2xs"
+                          <div className="relative shrink-0 select-none">
+                            {member.image ? (
+                              <img
+                                src={member.image}
+                                alt={member.name}
+                                className="w-10 h-10 rounded-full object-cover border border-border/80 shadow-2xs"
+                              />
+                            ) : (
+                              <div className={`w-10 h-10 rounded-full bg-gradient-to-tr ${avatarGrad} flex items-center justify-center font-extrabold text-[11px] text-white shadow-2xs`}>
+                                {initials}
+                              </div>
+                            )}
+                            <span
+                              className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white dark:border-stone-900 ${
+                                isUserOnline
+                                  ? "bg-emerald-500 ring-1 ring-emerald-300 animate-pulse"
+                                  : "bg-stone-400 dark:bg-stone-600"
+                              }`}
                             />
-                          ) : (
-                            <div className={`w-10 h-10 rounded-full bg-gradient-to-tr ${avatarGrad} flex items-center justify-center font-extrabold text-[11px] text-white select-none shadow-2xs shrink-0`}>
-                              {initials}
-                            </div>
-                          )}
+                          </div>
 
                           <div className="min-w-0">
                             <h3 className="font-extrabold text-text-primary text-sm tracking-tight truncate group-hover/card:text-brand-orange transition-colors">
@@ -670,46 +695,21 @@ export function TeamListClient({
                           </div>
                         </div>
 
-                        {/* Interactive Status Selector Dropdown */}
-                        <DropdownMenu>
-                          <DropdownMenuTrigger
-                            render={
-                              <button
-                                type="button"
-                                className={`inline-flex items-center gap-1.5 px-2.5 py-1.25 rounded-full text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer hover:scale-105 active:scale-95 shadow-3xs hover:brightness-105 ${status.badgeClass}`}
-                              >
-                                <span className={`w-1.5 h-1.5 rounded-full ${status.dotColor}`} />
-                                <span>{status.label}</span>
-                                <IconChevronDown className="h-2.5 w-2.5 opacity-80" stroke={3.5} />
-                              </button>
-                            }
+                        {/* Real-time Online / Offline Badge */}
+                        <div
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9.5px] font-black uppercase tracking-wider transition-all select-none shadow-3xs ${
+                            isUserOnline
+                              ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200/80 dark:border-emerald-900/40"
+                              : "bg-surface-page text-text-secondary border border-border/80"
+                          }`}
+                        >
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full ${
+                              isUserOnline ? "bg-emerald-500 animate-pulse" : "bg-stone-400"
+                            }`}
                           />
-                          <DropdownMenuContent align="end" className="w-36 rounded-xl border border-border p-1 shadow-md font-sans">
-                            <DropdownMenuGroup>
-                              <DropdownMenuItem
-                                onClick={() => handleStatusChange(member.id, "AVAILABLE")}
-                                className="flex items-center gap-2 px-2 py-1 text-xs font-bold text-emerald-600 hover:bg-emerald-50 rounded-lg cursor-pointer"
-                              >
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                                <span>Available</span>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => handleStatusChange(member.id, "BUSY")}
-                                className="flex items-center gap-2 px-2 py-1 text-xs font-bold text-amber-600 hover:bg-amber-50 rounded-lg cursor-pointer"
-                              >
-                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                                <span>Busy</span>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => handleStatusChange(member.id, "ON_LEAVE")}
-                                className="flex items-center gap-2 px-2 py-1 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer"
-                              >
-                                <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-                                <span>On Leave</span>
-                              </DropdownMenuItem>
-                            </DropdownMenuGroup>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                          <span>{isUserOnline ? "Online" : "Offline"}</span>
+                        </div>
                       </div>
 
                       {/* Skills Chips */}

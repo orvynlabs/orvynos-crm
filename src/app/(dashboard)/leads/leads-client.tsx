@@ -121,6 +121,21 @@ export function LeadsClient({ initialLeads, assignees = [], currentUser }: Leads
   const [mobileActiveStage, setMobileActiveStage] = useState<LeadStage>(LeadStage.NEW);
 
   useEffect(() => {
+    setLeads(initialLeads);
+  }, [initialLeads]);
+
+  useEffect(() => {
+    const handleWsEvent = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail && detail.entity === "lead") {
+        router.refresh();
+      }
+    };
+    window.addEventListener("crm:ws-event", handleWsEvent);
+    return () => window.removeEventListener("crm:ws-event", handleWsEvent);
+  }, [router]);
+
+  useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       if (params.get("new") === "true") {

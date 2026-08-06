@@ -3,6 +3,7 @@
 import { prisma, withRetry } from "@/lib/db";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { ExpenseCategory } from "@/lib/enums";
+import { broadcastWsEvent } from "@/lib/ws/broadcaster";
 
 export type ExpenseInput = {
   title: string;
@@ -21,7 +22,7 @@ export async function createExpense(data: ExpenseInput) {
 
     const expenseDate = data.date ? new Date(data.date) : new Date();
 
-    await withRetry(() =>
+    const newExpense = await withRetry(() =>
       prisma.expense.create({
         data: {
           title: data.title,
@@ -33,6 +34,13 @@ export async function createExpense(data: ExpenseInput) {
         },
       })
     );
+
+    await broadcastWsEvent({
+      type: "entity:update",
+      entity: "expense",
+      action: "create",
+      data: newExpense,
+    });
 
     revalidateTag("expenses");
     revalidateTag("dashboard-metrics");
@@ -90,6 +98,13 @@ export async function updateExpense(data: UpdateExpenseInput) {
       })
     );
 
+    await broadcastWsEvent({
+      type: "entity:update",
+      entity: "expense",
+      action: "update",
+      data: { id: data.id, title: data.title, amount: data.amount },
+    });
+
     revalidateTag("expenses");
     revalidateTag("dashboard-metrics");
     revalidatePath("/expenses");
@@ -121,6 +136,13 @@ export async function deleteExpense(id: string) {
     if (!existing) throw new Error("Expense record not found");
 
     await withRetry(() => prisma.expense.delete({ where: { id } }));
+
+    await broadcastWsEvent({
+      type: "entity:update",
+      entity: "expense",
+      action: "delete",
+      data: { id },
+    });
 
     revalidateTag("expenses");
     revalidateTag("dashboard-metrics");

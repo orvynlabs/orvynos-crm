@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { PaymentMethod, PaymentStatus } from "@/lib/enums";
+import { broadcastWsEvent } from "@/lib/ws/broadcaster";
 
 export type PaymentInput = {
   projectId: string;
@@ -81,6 +82,13 @@ export async function createPayment(data: PaymentInput) {
     fetch(`${appUrl}/api/receipts/${newPayment.id}/download`)
       .catch((err) => console.warn("[Receipt Pre-warm] Failed in background:", err.message));
 
+    await broadcastWsEvent({
+      type: "entity:update",
+      entity: "payment",
+      action: "create",
+      data: newPayment,
+    });
+
     revalidatePath("/payments");
     revalidatePath(`/projects/${data.projectId}`);
     revalidatePath(`/clients/${data.clientId}`);
@@ -154,6 +162,13 @@ export async function updatePayment(data: UpdatePaymentInput) {
         .catch((err) => console.warn("[Receipt Pre-warm] Failed in background:", err.message));
     }
 
+    await broadcastWsEvent({
+      type: "entity:update",
+      entity: "payment",
+      action: "update",
+      data: updated,
+    });
+
     revalidatePath("/payments");
     revalidatePath(`/projects/${targetProjectId}`);
     revalidatePath(`/clients/${targetClientId}`);
@@ -185,6 +200,13 @@ export async function deletePayment(id: string) {
           detail: `Payment ${existing.receiptNumber ? `#${existing.receiptNumber}` : ''} (₹${Number(existing.amount).toLocaleString('en-IN')}) was deleted`,
         },
       });
+    });
+
+    await broadcastWsEvent({
+      type: "entity:update",
+      entity: "payment",
+      action: "delete",
+      data: { id },
     });
 
     revalidatePath("/payments");

@@ -20,6 +20,7 @@ import {
   IconClock,
 } from "@tabler/icons-react";
 import { getSidebarTeamStatus, updateTeamMemberStatus } from "@/app/(dashboard)/team/actions";
+import { useWebSocket } from "@/components/providers/websocket-provider";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -71,6 +72,7 @@ export function SidebarNav({ onNavigate, initialTeamStatus = [] }: { onNavigate?
   const pathname = usePathname();
   const router = useRouter();
   const { pendingHref, setPendingHref } = useNav();
+  const { onlineUsers } = useWebSocket();
   const [teamStatus, setTeamStatus] = useState<any[]>(() => globalTeamStatusCache || initialTeamStatus);
   const [selectedStandupMember, setSelectedStandupMember] = useState<any | null>(null);
 
@@ -287,30 +289,21 @@ export function SidebarNav({ onNavigate, initialTeamStatus = [] }: { onNavigate?
             {!isTeamStatusHidden && (
               <div className="px-2.5 pb-2.5 space-y-1.5">
                 {teamStatus.slice(0, 4).map((member) => {
-                  const currentStatus = member.status || "AVAILABLE";
-                  const isAvailable = currentStatus === "AVAILABLE";
-                  const isBusy = currentStatus === "BUSY";
-                  const isLeave = currentStatus === "ON_LEAVE";
+                  const isUserOnline = onlineUsers.some(
+                    (u) =>
+                      (u.id && (u.id === member.userId || u.id === member.user?.id)) ||
+                      (u.email && (u.email.toLowerCase() === member.email?.toLowerCase() || u.email.toLowerCase() === member.user?.email?.toLowerCase()))
+                  );
 
-                  const statusDotColor = isAvailable
-                    ? "bg-emerald-500 ring-1 ring-white dark:ring-stone-900"
-                    : isBusy
-                    ? "bg-amber-500 ring-1 ring-white dark:ring-stone-900"
-                    : "bg-rose-500 ring-1 ring-white dark:ring-stone-900";
+                  const statusDotColor = isUserOnline
+                    ? "bg-emerald-500 ring-2 ring-emerald-300 dark:ring-emerald-900 animate-pulse"
+                    : "bg-stone-400 dark:bg-stone-600 ring-1 ring-white dark:ring-stone-900";
 
-                  const statusLabel = isAvailable
-                    ? "Available"
-                    : isBusy
-                    ? "Busy"
-                    : isLeave
-                    ? "On Leave"
-                    : currentStatus;
+                  const statusLabel = isUserOnline ? "Online" : "Offline";
 
-                  const statusBadgeStyle = isAvailable
-                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20"
-                    : isBusy
-                    ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20"
-                    : "bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20";
+                  const statusBadgeStyle = isUserOnline
+                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-bold"
+                    : "bg-surface-page text-text-secondary border border-border/60";
 
                   const latestStandup = member.dailyUpdates?.[0];
                   const todayFocus = latestStandup?.workingOnNext || "No standup logged";

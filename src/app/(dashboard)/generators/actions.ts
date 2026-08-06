@@ -3,6 +3,7 @@
 import { prisma, withRetry } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
+import { broadcastWsEvent } from "@/lib/ws/broadcaster";
 import { generateAndSaveDocument } from "@/lib/pdf";
 import { renderProposalHtml, type ProposalTemplateProps, type PricingItem } from "@/components/pdf-templates/ProposalTemplate";
 import { renderInvoiceHtml, type InvoiceTemplateProps, type InvoiceLineItem } from "@/components/pdf-templates/InvoiceTemplate";
