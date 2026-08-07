@@ -4,6 +4,8 @@ import { prisma } from "@/lib/db";
 import { revalidatePath, unstable_cache } from "next/cache";
 import { auth } from "@/auth";
 import { DocumentType } from "@/lib/enums";
+import { broadcastWsEvent } from "@/lib/ws/broadcaster";
+
 
 export async function getDocuments() {
   return unstable_cache(
@@ -136,6 +138,13 @@ export async function createDocument(data: {
       },
     });
 
+    await broadcastWsEvent({
+      type: "entity:update",
+      entity: "system",
+      action: "create",
+      data: doc,
+    });
+
     revalidatePath("/documents");
     return { success: true, data: doc };
   } catch (error: any) {
@@ -151,6 +160,13 @@ export async function deleteDocument(id: string) {
 
     await prisma.document.delete({
       where: { id },
+    });
+
+    await broadcastWsEvent({
+      type: "entity:update",
+      entity: "system",
+      action: "delete",
+      data: { id },
     });
 
     revalidatePath("/documents");

@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/db";
 import { revalidatePath, revalidateTag } from "next/cache";
+import { broadcastWsEvent } from "@/lib/ws/broadcaster";
 
 export type ProjectInput = {
   name: string;
@@ -77,6 +78,13 @@ export async function createProject(data: ProjectInput) {
           })),
         });
       }
+    });
+
+    await broadcastWsEvent({
+      type: "entity:update",
+      entity: "project",
+      action: "create",
+      data: { name: data.name },
     });
 
     revalidatePath("/clients");
@@ -181,6 +189,13 @@ export async function updateProject(id: string, data: ProjectInput) {
       }
     });
 
+    await broadcastWsEvent({
+      type: "entity:update",
+      entity: "project",
+      action: "update",
+      data: { id, name: data.name, status: data.status },
+    });
+
     revalidatePath("/clients");
     revalidatePath("/projects");
     return { success: true };
@@ -225,6 +240,13 @@ export async function updateProjectStatus(
           },
         });
       }
+    });
+
+    await broadcastWsEvent({
+      type: "entity:update",
+      entity: "project",
+      action: "status_change",
+      data: { id, status },
     });
 
     revalidatePath("/clients");

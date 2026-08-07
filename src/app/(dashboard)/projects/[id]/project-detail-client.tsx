@@ -309,6 +309,12 @@ export function ProjectDetailClient({ project, clients, teamMembers }: ProjectDe
   const [proposalsList, setProposalsList] = useState(project.proposals || []);
   const [invoicesList, setInvoicesList] = useState(project.invoices || []);
   const [agreementsList, setAgreementsList] = useState(project.agreements || []);
+
+  useEffect(() => {
+    setProposalsList(project.proposals || []);
+    setInvoicesList(project.invoices || []);
+    setAgreementsList(project.agreements || []);
+  }, [project]);
   const [previewModal, setPreviewModal] = useState<{ open: boolean; title: string; pdfKey: string | null }>({
     open: false, title: "", pdfKey: null,
   });

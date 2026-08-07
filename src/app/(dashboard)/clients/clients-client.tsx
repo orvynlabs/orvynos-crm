@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useMemo, useDeferredValue } from "react";
+import { useState, useEffect, useTransition, useMemo, useDeferredValue } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -111,6 +111,10 @@ const getStatusConfig = (status: string) => {
 
 export function ClientsClient({ initialClients, metrics }: ClientsClientProps) {
   const [clientsList, setClientsList] = useState<Client[]>(initialClients);
+
+  useEffect(() => {
+    setClientsList(initialClients);
+  }, [initialClients]);
   const [searchQuery, setSearchQuery] = useState("");
   const deferredSearchQuery = useDeferredValue(searchQuery);
   const [isSheetOpen, setIsSheetOpen] = useState(false);

@@ -288,6 +288,13 @@ export async function createProposal(data: {
       },
     }));
 
+    await broadcastWsEvent({
+      type: "entity:update",
+      entity: "generator",
+      action: "create",
+      data: { id: proposal.id, type: "proposal", title: proposal.title },
+    });
+
     try {
       revalidatePath("/generators");
       revalidatePath("/documents");
@@ -395,6 +402,13 @@ export async function createInvoice(data: {
         pdfKey: storageKey,
       },
     }));
+
+    await broadcastWsEvent({
+      type: "entity:update",
+      entity: "generator",
+      action: "create",
+      data: { id: invoice.id, type: "invoice", number: invoice.number },
+    });
 
     try {
       revalidatePath("/generators");
@@ -536,6 +550,13 @@ export async function createAgreement(data: {
         pdfKey: storageKey,
       },
     }));
+
+    await broadcastWsEvent({
+      type: "entity:update",
+      entity: "generator",
+      action: "create",
+      data: { id: agreement.id, type: "agreement", title: agreement.title },
+    });
 
     try {
       revalidatePath("/generators");
@@ -738,6 +759,13 @@ export async function deleteGeneratorItem(id: string, type: 'proposal' | 'invoic
       await prisma.agreement.delete({ where: { id } });
     }
 
+    await broadcastWsEvent({
+      type: "entity:update",
+      entity: "generator",
+      action: "delete",
+      data: { id, type },
+    });
+
     revalidatePath("/generators");
     revalidatePath("/documents");
     return { success: true };
@@ -767,6 +795,13 @@ export async function updateGeneratorStatus(
     } else if (type === 'agreement') {
       await prisma.agreement.update({ where: { id }, data: { status: newStatus as any } });
     }
+
+    await broadcastWsEvent({
+      type: "entity:update",
+      entity: "generator",
+      action: "status_change",
+      data: { id, type, status: newStatus },
+    });
 
     revalidatePath("/generators");
     revalidatePath("/documents");
@@ -1057,6 +1092,13 @@ export async function updateProposal(id: string, data: {
       include: { client: { select: { name: true } }, project: { select: { name: true } } },
     }));
 
+    await broadcastWsEvent({
+      type: "entity:update",
+      entity: "generator",
+      action: "update",
+      data: { id, type: "proposal" },
+    });
+
     try {
       revalidatePath("/generators");
       revalidatePath("/documents");
@@ -1180,6 +1222,13 @@ export async function updateInvoice(id: string, data: {
       },
       include: { client: { select: { name: true } }, project: { select: { name: true } } },
     }));
+
+    await broadcastWsEvent({
+      type: "entity:update",
+      entity: "generator",
+      action: "update",
+      data: { id, type: "invoice" },
+    });
 
     try {
       revalidatePath("/generators");
@@ -1351,6 +1400,13 @@ export async function updateAgreement(id: string, data: {
       },
       include: { client: { select: { name: true } }, project: { select: { name: true } } },
     }));
+
+    await broadcastWsEvent({
+      type: "entity:update",
+      entity: "generator",
+      action: "update",
+      data: { id, type: "agreement" },
+    });
 
     try {
       revalidatePath("/generators");

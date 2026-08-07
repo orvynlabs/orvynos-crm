@@ -334,12 +334,20 @@ export async function convertLeadToClient(id: string, input?: ConvertLeadInput) 
 
 export async function updateLeadStageFast(id: string, stage: LeadStage) {
   try {
-    await prisma.lead.update({
+    const updated = await prisma.lead.update({
       where: { id },
       data: {
         stage,
       },
     });
+
+    await broadcastWsEvent({
+      type: "entity:update",
+      entity: "lead",
+      action: "stage_change",
+      data: updated,
+    });
+
     return { success: true };
   } catch (error: any) {
     console.error("Failed to update lead stage fast:", error);

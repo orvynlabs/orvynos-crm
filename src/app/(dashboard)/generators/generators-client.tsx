@@ -252,6 +252,12 @@ export function GeneratorsClient({
   const [proposals, setProposals] = useState<ProposalItem[]>(initialProposals);
   const [invoices, setInvoices] = useState<InvoiceItem[]>(initialInvoices);
   const [agreements, setAgreements] = useState<AgreementItem[]>(initialAgreements);
+
+  useEffect(() => {
+    setProposals(initialProposals);
+    setInvoices(initialInvoices);
+    setAgreements(initialAgreements);
+  }, [initialProposals, initialInvoices, initialAgreements]);
   const [searchQuery, setSearchQuery] = useState("");
   const [agrSubFilter, setAgrSubFilter] = useState<"ALL" | "MSA" | "SOW" | "PCC">("ALL");
   const [isPending, startTransition] = useTransition();

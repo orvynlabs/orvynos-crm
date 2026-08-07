@@ -185,6 +185,13 @@ export function ClientDetailClient({ client }: ClientDetailClientProps) {
   const [proposals, setProposals] = useState<ProposalItem[]>(client.proposals || []);
   const [invoices, setInvoices] = useState<InvoiceItem[]>(client.invoices || []);
   const [agreements, setAgreements] = useState<AgreementItem[]>(client.agreements || []);
+
+  useEffect(() => {
+    setDocuments(client.documents || []);
+    setProposals(client.proposals || []);
+    setInvoices(client.invoices || []);
+    setAgreements(client.agreements || []);
+  }, [client]);
   const [previewModal, setPreviewModal] = useState<{ open: boolean; title: string; pdfKey: string | null }>({
     open: false, title: "", pdfKey: null,
   });

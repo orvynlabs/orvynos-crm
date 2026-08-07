@@ -98,6 +98,7 @@ export function WebSocketProvider({ children, user }: WebSocketProviderProps) {
   const socketRef = useRef<WebSocket | null>(null);
   const pingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const presencePollTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const mergeOnlineUsers = useCallback(
     (fetchedUsers: WsUser[]) => {
@@ -160,6 +161,12 @@ export function WebSocketProvider({ children, user }: WebSocketProviderProps) {
 
   const connectWs = useCallback(() => {
     if (typeof window === "undefined") return;
+    if (
+      socketRef.current &&
+      (socketRef.current.readyState === WebSocket.OPEN || socketRef.current.readyState === WebSocket.CONNECTING)
+    ) {
+      return;
+    }
 
     try {
       const url = getWsUrl();
@@ -168,6 +175,10 @@ export function WebSocketProvider({ children, user }: WebSocketProviderProps) {
 
       ws.onopen = () => {
         setIsConnected(true);
+        if (reconnectTimerRef.current) {
+          clearTimeout(reconnectTimerRef.current);
+          reconnectTimerRef.current = null;
+        }
 
         if (user && (user.id || user.email)) {
           ws.send(
@@ -207,15 +218,16 @@ export function WebSocketProvider({ children, user }: WebSocketProviderProps) {
           }
 
           if (payload.entity) {
-            const isOtherUser = payload.user && payload.user.id !== user?.id;
+            const myKey = (user?.id || user?.email || "").toLowerCase();
+            const actorKey = (payload.user?.id || payload.user?.email || "").toLowerCase();
+            const isOtherUser = actorKey && myKey ? actorKey !== myKey : true;
             const actorName = payload.user?.name ? payload.user.name.split(" ")[0] : "A team member";
 
             if (isOtherUser) {
               const entityName = payload.entity.charAt(0).toUpperCase() + payload.entity.slice(1);
-              toast.info(`${actorName} ${payload.action || "updated"} a ${entityName}`);
+              toast.info(`${actorName} ${payload.action ? payload.action.replace("_", " ") : "updated"} a ${entityName}`);
+              router.refresh();
             }
-
-            router.refresh();
           }
         } catch (e) {
           console.error("Error handling WS message:", e);
@@ -223,12 +235,45 @@ export function WebSocketProvider({ children, user }: WebSocketProviderProps) {
       };
 
       ws.onclose = () => {
+        setIsConnected(false);
         if (pingTimerRef.current) clearInterval(pingTimerRef.current);
+        if (socketRef.current === ws) {
+          socketRef.current = null;
+        }
+        if (!reconnectTimerRef.current) {
+          reconnectTimerRef.current = setTimeout(() => {
+            reconnectTimerRef.current = null;
+            connectWs();
+          }, 3000);
+        }
       };
 
-      ws.onerror = () => {};
+      ws.onerror = () => {
+        setIsConnected(false);
+      };
     } catch {}
   }, [getWsUrl, mergeOnlineUsers, pathname, router, user]);
+
+  // Sync real-time page navigation presence over WS when route changes
+  useEffect(() => {
+    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN && user && (user.id || user.email)) {
+      try {
+        socketRef.current.send(
+          JSON.stringify({
+            type: "presence:navigate",
+            user: {
+              id: user.id || user.email,
+              name: user.name || "Team Member",
+              email: user.email || "",
+              image: user.image || null,
+              currentPage: pathname,
+            },
+            currentPage: pathname,
+          })
+        );
+      } catch {}
+    }
+  }, [pathname, user]);
 
   useEffect(() => {
     sendPresenceHeartbeat();
@@ -252,6 +297,7 @@ export function WebSocketProvider({ children, user }: WebSocketProviderProps) {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       if (presencePollTimerRef.current) clearInterval(presencePollTimerRef.current);
       if (pingTimerRef.current) clearInterval(pingTimerRef.current);
+      if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
       if (socketRef.current) {
         try {
           socketRef.current.close();

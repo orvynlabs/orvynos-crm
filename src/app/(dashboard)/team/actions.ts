@@ -5,6 +5,8 @@ import { prisma } from "@/lib/db";
 import { revalidatePath, unstable_cache } from "next/cache";
 import { PaymentMethod, PaymentStatus } from "@/lib/enums";
 import { getTeamMemberTotalPaid, getTeamMemberPendingAmount } from "@/lib/finance";
+import { broadcastWsEvent } from "@/lib/ws/broadcaster";
+
 
 export type UpdateTeamMemberInput = {
   name?: string;
@@ -196,6 +198,13 @@ export async function updateTeamMemberStatus(id: string, status: "AVAILABLE" | "
       data: { status },
     });
 
+    await broadcastWsEvent({
+      type: "entity:update",
+      entity: "standup",
+      action: "update",
+      data: { id, status },
+    });
+
     revalidatePath("/team");
     return { success: true };
   } catch (error: any) {
@@ -238,6 +247,13 @@ export async function createDailyUpdate(data: {
         workingOnNext: data.workingOnNext.trim(),
         blockers: data.blockers?.trim() || null,
       },
+    });
+
+    await broadcastWsEvent({
+      type: "entity:update",
+      entity: "standup",
+      action: "create",
+      data: update,
     });
 
     revalidatePath("/team");
@@ -298,6 +314,13 @@ export async function deleteDailyUpdate(id: string) {
 
     await (prisma as any).dailyUpdate.delete({
       where: { id },
+    });
+
+    await broadcastWsEvent({
+      type: "entity:update",
+      entity: "standup",
+      action: "delete",
+      data: { id },
     });
 
     revalidatePath("/team");
@@ -463,6 +486,13 @@ export async function updateTeamMember(id: string, data: UpdateTeamMemberInput) 
       }),
     ]);
 
+    await broadcastWsEvent({
+      type: "entity:update",
+      entity: "standup",
+      action: "update",
+      data: { id },
+    });
+
     revalidatePath("/team");
     revalidatePath(`/team/${id}`);
 
@@ -490,6 +520,13 @@ export async function createTeamPayment(data: TeamPaymentInput) {
         paidAt: paidAtDate,
         notes: data.notes || null,
       },
+    });
+
+    await broadcastWsEvent({
+      type: "entity:update",
+      entity: "payment",
+      action: "create",
+      data: payment,
     });
 
     revalidatePath("/team");
@@ -528,6 +565,13 @@ export async function updateTeamPaymentStatus(
       },
     });
 
+    await broadcastWsEvent({
+      type: "entity:update",
+      entity: "payment",
+      action: "update",
+      data: { id: paymentId, status },
+    });
+
     revalidatePath("/team");
     revalidatePath(`/team/${payment.teamMemberId}`);
 
@@ -551,6 +595,13 @@ export async function deleteTeamPayment(paymentId: string) {
 
     await prisma.teamPayment.delete({
       where: { id: paymentId },
+    });
+
+    await broadcastWsEvent({
+      type: "entity:update",
+      entity: "payment",
+      action: "delete",
+      data: { id: paymentId },
     });
 
     revalidatePath("/team");

@@ -164,7 +164,8 @@ export function TeamListClient({
 
   useEffect(() => {
     setMembers(initialMembers);
-  }, [initialMembers]);
+    setDailyUpdates(initialDailyUpdates);
+  }, [initialMembers, initialDailyUpdates]);
   const [searchQuery, setSearchQuery] = useState("");
   const deferredSearchQuery = useDeferredValue(searchQuery);
   const [isSheetOpen, setIsSheetOpen] = useState(false);

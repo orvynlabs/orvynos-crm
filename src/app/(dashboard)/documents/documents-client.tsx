@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useRef, useMemo } from "react";
+import { useState, useEffect, useTransition, useRef, useMemo } from "react";
 import {
   IconFolder,
   IconPlus,
@@ -126,6 +126,10 @@ export function DocumentsClient({
   clients,
 }: DocumentsClientProps) {
   const [documents, setDocuments] = useState<DocumentItem[]>(initialDocuments);
+
+  useEffect(() => {
+    setDocuments(initialDocuments);
+  }, [initialDocuments]);
   const [selectedFolder, setSelectedFolder] = useState<string>("ALL");
   const [activeCategory, setActiveCategory] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
